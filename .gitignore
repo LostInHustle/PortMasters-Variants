@@ -1,0 +1,8 @@
+# The instance directory should be ignored.
+instance/
+
+# The virtual environment folder should be ignored.
+.venv/
+
+# The macOS system file .DS_Store should be ignored.
+.DS_Store

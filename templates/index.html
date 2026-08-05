@@ -1,0 +1,4054 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PortMasters · Multiplayer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+    <style>
+      /* ==========================================================================
+   THEME — WeChat-inspired nautical palette
+   ========================================================================== */
+      :root {
+        --wc-green: #07c160;
+        --wc-green-dark: #06ad56;
+        --wc-green-soft: rgba(7, 193, 96, 0.12);
+        --navy-900: #0a1628;
+        --navy-800: #111e36;
+        --navy-700: #1a3c8c;
+        --navy-600: #2e5aa7;
+        --navy-500: #4a7bd4;
+        --gold: #ffd700;
+        --bg: #e6f2ff;
+        --surface: #f0f8ff;
+        --surface-elev: #ffffff;
+        --text: #1a237e;
+        --text-soft: #5a6a8a;
+        --border: #2e5aa7;
+        --danger: #ff5252;
+        --warn: #ff9800;
+        --success: #07c160;
+        --shadow-sm: 0 2px 8px rgba(10, 22, 40, 0.08);
+        --shadow-md: 0 8px 24px rgba(10, 22, 40, 0.12);
+        --shadow-lg: 0 20px 60px rgba(10, 22, 40, 0.25);
+        --ease: cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html,
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        height: 100vh;
+        overflow: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* Custom scrollbar — WeChat style */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(46, 90, 167, 0.25);
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(46, 90, 167, 0.5);
+      }
+
+      /* ==========================================================================
+   AUTH SCREEN
+   ========================================================================== */
+      .auth-wrap {
+        position: fixed;
+        inset: 0;
+        background:
+          radial-gradient(
+            ellipse at 20% 10%,
+            rgba(255, 215, 0, 0.12) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            ellipse at 80% 90%,
+            rgba(7, 193, 96, 0.1) 0%,
+            transparent 50%
+          ),
+          linear-gradient(135deg, #0a1628 0%, #1a3c8c 60%, #2e5aa7 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        overflow: auto;
+      }
+      .auth-card {
+        position: relative;
+        width: 420px;
+        max-width: calc(100vw - 32px);
+        background: rgba(255, 255, 255, 0.06);
+        backdrop-filter: blur(24px) saturate(180%);
+        -webkit-backdrop-filter: blur(24px) saturate(180%);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 20px;
+        padding: 40px 36px;
+        box-shadow: var(--shadow-lg);
+        animation: authIn 0.5s var(--ease);
+      }
+      @keyframes authIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px) scale(0.98);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+      .auth-logo {
+        text-align: center;
+        margin-bottom: 28px;
+      }
+      .auth-logo .icon {
+        font-size: 48px;
+        margin-bottom: 8px;
+        display: block;
+      }
+      .auth-logo h1 {
+        color: #fff;
+        font-size: 26px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+      }
+      .auth-logo p {
+        color: rgba(255, 255, 255, 0.65);
+        font-size: 13px;
+        margin-top: 4px;
+      }
+      .auth-tabs {
+        display: flex;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 4px;
+        margin-bottom: 22px;
+      }
+      .auth-tab {
+        flex: 1;
+        padding: 10px;
+        text-align: center;
+        border-radius: 7px;
+        color: rgba(255, 255, 255, 0.7);
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.25s var(--ease);
+      }
+      .auth-tab.active {
+        background: var(--wc-green);
+        color: #fff;
+        box-shadow: 0 2px 8px rgba(7, 193, 96, 0.4);
+      }
+      .auth-field {
+        margin-bottom: 14px;
+      }
+      .auth-field label {
+        display: block;
+        color: rgba(255, 255, 255, 0.75);
+        font-size: 12px;
+        margin-bottom: 6px;
+        font-weight: 500;
+      }
+      .auth-field input {
+        width: 100%;
+        padding: 12px 14px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 10px;
+        color: #fff;
+        font-size: 14px;
+        transition: all 0.2s var(--ease);
+        outline: none;
+        font-family: inherit;
+      }
+      .auth-field input:focus {
+        border-color: var(--wc-green);
+        background: rgba(255, 255, 255, 0.12);
+        box-shadow: 0 0 0 3px rgba(7, 193, 96, 0.2);
+      }
+      .auth-field input::placeholder {
+        color: rgba(255, 255, 255, 0.35);
+      }
+      .auth-btn {
+        width: 100%;
+        padding: 13px;
+        margin-top: 8px;
+        background: var(--wc-green);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s var(--ease);
+        font-family: inherit;
+        letter-spacing: 0.3px;
+      }
+      .auth-btn:hover:not(:disabled) {
+        background: var(--wc-green-dark);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 14px rgba(7, 193, 96, 0.4);
+      }
+      .auth-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .auth-msg {
+        text-align: center;
+        font-size: 13px;
+        padding: 10px;
+        border-radius: 8px;
+        margin-top: 12px;
+        min-height: 20px;
+      }
+      .auth-msg.error {
+        color: #ff9b9b;
+        background: rgba(255, 82, 82, 0.12);
+      }
+      .auth-msg.ok {
+        color: #9cff9c;
+        background: rgba(7, 193, 96, 0.12);
+      }
+      .auth-footer {
+        text-align: center;
+        margin-top: 20px;
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 12px;
+      }
+
+      /* ==========================================================================
+   MAIN APP SHELL
+   ========================================================================== */
+      #app-root {
+        display: none;
+        height: 100vh;
+        grid-template-columns: 300px 1fr;
+        grid-template-rows: 1fr;
+      }
+      #app-root.visible {
+        display: grid;
+      }
+
+      .sidebar {
+        background: var(--navy-900);
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid rgba(255, 255, 255, 0.06);
+        overflow: hidden;
+      }
+      .sidebar-header {
+        padding: 18px 18px 14px;
+        background: linear-gradient(
+          180deg,
+          var(--navy-800) 0%,
+          var(--navy-900) 100%
+        );
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .me-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--wc-green) 0%, #06ad56 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        flex-shrink: 0;
+        position: relative;
+        box-shadow: 0 2px 8px rgba(7, 193, 96, 0.3);
+      }
+      .avatar.lg {
+        width: 52px;
+        height: 52px;
+        font-size: 26px;
+        border-radius: 14px;
+      }
+      .avatar.sm {
+        width: 38px;
+        height: 38px;
+        font-size: 18px;
+        border-radius: 10px;
+      }
+      .avatar-dot {
+        position: absolute;
+        bottom: -1px;
+        right: -1px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--wc-green);
+        border: 2px solid var(--navy-900);
+      }
+      .me-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .me-name {
+        font-size: 15px;
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .me-stats {
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.55);
+        margin-top: 2px;
+      }
+      .me-stats span {
+        color: var(--gold);
+        font-weight: 600;
+      }
+
+      .sidebar-tabs {
+        display: flex;
+        padding: 12px 12px 0;
+        gap: 4px;
+      }
+      .side-tab {
+        flex: 1;
+        padding: 8px 10px;
+        text-align: center;
+        background: rgba(255, 255, 255, 0.04);
+        border-radius: 8px;
+        color: rgba(255, 255, 255, 0.65);
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.2s var(--ease);
+        position: relative;
+      }
+      .side-tab.active {
+        background: rgba(7, 193, 96, 0.15);
+        color: var(--wc-green);
+      }
+      .side-tab .badge {
+        position: absolute;
+        top: 3px;
+        right: 6px;
+        background: var(--danger);
+        color: #fff;
+        font-size: 10px;
+        padding: 1px 5px;
+        border-radius: 8px;
+        font-weight: 600;
+        min-width: 16px;
+        text-align: center;
+      }
+
+      .sidebar-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 10px 10px 10px;
+      }
+
+      .section-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: rgba(255, 255, 255, 0.4);
+        padding: 8px 8px 6px;
+        font-weight: 600;
+      }
+
+      .user-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: background 0.15s var(--ease);
+        margin-bottom: 2px;
+      }
+      .user-row:hover {
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .user-row.active {
+        background: rgba(7, 193, 96, 0.12);
+      }
+      .user-row .info {
+        flex: 1;
+        min-width: 0;
+      }
+      .user-row .name {
+        font-size: 13px;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .user-row .meta {
+        font-size: 10.5px;
+        color: rgba(255, 255, 255, 0.5);
+        margin-top: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .online-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #666;
+        flex-shrink: 0;
+        transition: background 0.2s var(--ease);
+      }
+      .online-dot.on {
+        background: var(--wc-green);
+        box-shadow: 0 0 6px rgba(7, 193, 96, 0.6);
+      }
+
+      .empty-state {
+        text-align: center;
+        padding: 30px 10px;
+        color: rgba(255, 255, 255, 0.4);
+        font-size: 12px;
+      }
+      .empty-state .icon {
+        font-size: 32px;
+        opacity: 0.4;
+        margin-bottom: 8px;
+      }
+
+      .sidebar-footer {
+        padding: 12px;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+        background: var(--navy-800);
+      }
+      .logout-btn {
+        width: 100%;
+        padding: 9px;
+        background: rgba(255, 82, 82, 0.1);
+        color: #ff9b9b;
+        border: 1px solid rgba(255, 82, 82, 0.25);
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s var(--ease);
+        font-family: inherit;
+      }
+      .logout-btn:hover {
+        background: rgba(255, 82, 82, 0.18);
+      }
+
+      /* ==========================================================================
+   GAME AREA
+   ========================================================================== */
+      .game-area {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        grid-template-rows: auto 1fr auto auto;
+        gap: 8px;
+        padding: 10px;
+        overflow: hidden;
+      }
+
+      .header {
+        grid-column: 1 / -1;
+        background: var(--navy-700);
+        color: var(--gold);
+        padding: 12px 20px;
+        border-radius: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .header h1 {
+        font-size: 22px;
+        font-weight: bold;
+      }
+      .header .subtitle {
+        color: #fff;
+        font-size: 12px;
+      }
+      .header .shortcuts {
+        color: #aac4e8;
+        font-size: 10px;
+      }
+
+      .status-panel {
+        grid-row: 2;
+        background: var(--surface);
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        padding: 12px;
+        overflow-y: auto;
+        max-height: calc(100vh - 220px);
+      }
+      .status-section {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 10px;
+        margin-bottom: 10px;
+      }
+      .status-section h3 {
+        color: var(--navy-700);
+        font-size: 13px;
+        margin-bottom: 8px;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 4px;
+      }
+      .stat-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 3px 0;
+        font-size: 12px;
+      }
+      .stat-value {
+        font-weight: bold;
+        color: var(--navy-600);
+      }
+      .stat-money {
+        color: #4caf50;
+        font-weight: bold;
+        font-size: 14px;
+      }
+      .stat-score {
+        color: var(--text);
+      }
+      .inv-item {
+        display: flex;
+        align-items: center;
+        padding: 2px 0;
+        font-size: 11px;
+      }
+      .inv-item .icon {
+        margin-right: 4px;
+      }
+      .inv-item .name {
+        flex: 1;
+      }
+      .inv-item .count {
+        font-weight: bold;
+        min-width: 30px;
+        text-align: right;
+      }
+
+      .phase-panel {
+        grid-row: 2;
+        background: var(--surface);
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        padding: 16px;
+        overflow-y: auto;
+        max-height: calc(100vh - 220px);
+        position: relative;
+      }
+
+      .control-panel {
+        grid-column: 1 / -1;
+        background: var(--navy-700);
+        padding: 8px 12px;
+        border-radius: 8px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+      .log-panel {
+        grid-column: 1 / -1;
+        background: #f8f9fa;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px;
+        height: 140px;
+        overflow-y: auto;
+        font-size: 11px;
+        font-family: "Consolas", monospace;
+      }
+      .log-entry {
+        padding: 2px 4px;
+        border-bottom: 1px dotted #ddd;
+      }
+
+      /* ==========================================================================
+   BUTTONS
+   ========================================================================== */
+      .btn {
+        background: var(--navy-600);
+        color: white;
+        border: 2px solid;
+        border-color: #5a85d6 #1a3c8c #1a3c8c #5a85d6;
+        padding: 8px 16px;
+        font-family: inherit;
+        font-weight: bold;
+        font-size: 12px;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: all 0.1s;
+        user-select: none;
+      }
+      .btn:hover:not(:disabled) {
+        filter: brightness(1.2);
+      }
+      .btn:active:not(:disabled) {
+        border-color: #1a3c8c #5a85d6 #5a85d6 #1a3c8c;
+        transform: translateY(1px);
+      }
+      .btn:disabled {
+        background: #888;
+        cursor: not-allowed;
+        opacity: 0.7;
+      }
+      .btn-success {
+        background: #4caf50;
+        border-color: #7cd67f #2d7a30 #2d7a30 #7cd67f;
+      }
+      .btn-warning {
+        background: #ff9800;
+        border-color: #ffb84d #b36b00 #b36b00 #ffb84d;
+        color: white;
+      }
+      .btn-danger {
+        background: #ff5252;
+        border-color: #ff8585 #c62828 #c62828 #ff8585;
+      }
+      .btn-gold {
+        background: var(--gold);
+        color: var(--text);
+        border-color: #ffe766 #b39700 #b39700 #ffe766;
+      }
+      .btn-grey {
+        background: #424242;
+        border-color: #666 #222 #222 #666;
+      }
+      .btn-lg {
+        padding: 12px 24px;
+        font-size: 14px;
+      }
+      .btn-xl {
+        padding: 15px 30px;
+        font-size: 16px;
+      }
+
+      .card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 14px;
+        padding: 10px;
+      }
+      .card {
+        background: var(--surface);
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      }
+      .card-header {
+        background: var(--bg);
+        padding: 10px 14px;
+        border-bottom: 2px solid var(--border);
+        font-weight: bold;
+        font-size: 14px;
+        color: var(--navy-700);
+        text-align: center;
+      }
+      .card-body {
+        padding: 12px 14px;
+        flex: 1;
+      }
+      .card-footer {
+        padding: 10px 14px;
+        border-top: 1px solid #ddd;
+      }
+      .resource-row {
+        display: flex;
+        align-items: center;
+        padding: 4px 0;
+        font-size: 12px;
+      }
+      .resource-row .icon {
+        font-size: 16px;
+        margin-right: 6px;
+      }
+      .resource-row .name {
+        font-weight: bold;
+        min-width: 90px;
+      }
+      .resource-row .qty {
+        margin: 0 6px;
+      }
+      .resource-row .price {
+        color: #666;
+        margin-left: auto;
+      }
+      .resource-row .inv-status {
+        margin-left: 8px;
+        font-size: 11px;
+      }
+      .hero-title {
+        font-size: 28px;
+        font-weight: bold;
+        color: var(--navy-700);
+        text-align: center;
+        margin: 20px 0 10px;
+      }
+      .subtitle-text {
+        font-size: 14px;
+        color: var(--navy-600);
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .center-block {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(10, 22, 40, 0.6);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        padding: 20px;
+        animation: fadeIn 0.2s var(--ease);
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      .modal {
+        background: var(--bg);
+        border: 3px solid var(--border);
+        border-radius: 12px;
+        padding: 24px;
+        max-width: 650px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        animation: modalIn 0.25s var(--ease);
+      }
+      @keyframes modalIn {
+        from {
+          opacity: 0;
+          transform: translateY(-10px) scale(0.98);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+      .modal h2 {
+        color: var(--navy-700);
+        margin-bottom: 16px;
+        text-align: center;
+      }
+      .modal pre {
+        background: white;
+        padding: 12px;
+        border-radius: 6px;
+        white-space: pre-wrap;
+        font-family: inherit;
+        font-size: 12px;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+      .boon-card,
+      .module-card {
+        background: var(--surface);
+        border: 3px solid var(--border);
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+        transition: transform 0.2s;
+      }
+      .boon-card:hover,
+      .module-card:hover {
+        transform: translateY(-4px);
+      }
+      .boon-icon,
+      .module-icon {
+        font-size: 48px;
+        margin: 10px 0;
+      }
+      .boon-name,
+      .module-name {
+        font-size: 16px;
+        font-weight: bold;
+        color: var(--navy-700);
+        margin: 8px 0;
+      }
+      .boon-desc,
+      .module-desc {
+        font-size: 12px;
+        color: #333;
+        margin: 10px 0;
+        min-height: 60px;
+      }
+      .separator {
+        height: 2px;
+        background: var(--border);
+        margin: 16px 0;
+      }
+      .profit-positive {
+        color: #4caf50;
+        font-weight: bold;
+      }
+      .profit-negative {
+        color: #ff5252;
+        font-weight: bold;
+      }
+      #particles-canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        pointer-events: none;
+        z-index: 9999;
+      }
+      .shake {
+        animation: shake 0.3s;
+      }
+      @keyframes shake {
+        0%,
+        100% {
+          transform: translate(0, 0);
+        }
+        20% {
+          transform: translate(-4px, -4px);
+        }
+        40% {
+          transform: translate(4px, 4px);
+        }
+        60% {
+          transform: translate(-2px, 2px);
+        }
+        80% {
+          transform: translate(2px, -2px);
+        }
+      }
+      .worker-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: white;
+        padding: 8px 12px;
+        margin: 4px 0;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+        font-size: 12px;
+      }
+      .inv-section-title {
+        color: var(--navy-600);
+        font-weight: bold;
+        font-size: 11px;
+        padding: 4px 0;
+        border-bottom: 1px solid var(--border);
+        margin: 6px 0 4px;
+      }
+
+      /* ==========================================================================
+   CHAT DRAWER (FIXED BUBBLE WRAPPING)
+   ========================================================================== */
+      .chat-drawer-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(10, 22, 40, 0.5);
+        backdrop-filter: blur(2px);
+        z-index: 2000;
+        animation: fadeIn 0.2s var(--ease);
+      }
+      .chat-drawer {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 420px;
+        max-width: 100vw;
+        background: #ececec;
+        z-index: 2001;
+        display: flex;
+        flex-direction: column;
+        box-shadow: -8px 0 30px rgba(0, 0, 0, 0.25);
+        animation: drawerIn 0.3s var(--ease);
+      }
+      @keyframes drawerIn {
+        from {
+          transform: translateX(100%);
+        }
+        to {
+          transform: translateX(0);
+        }
+      }
+      .chat-header {
+        background: #ededed;
+        padding: 14px 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-bottom: 1px solid #d6d6d6;
+      }
+      .chat-header .back-btn {
+        background: none;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        color: #666;
+        padding: 4px;
+      }
+      .chat-header .peer {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .chat-header .peer-name {
+        font-size: 16px;
+        font-weight: 600;
+        color: #222;
+      }
+      .chat-header .peer-status {
+        font-size: 11px;
+        color: var(--wc-green);
+        font-weight: 500;
+      }
+
+      .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px 14px;
+        background: #ececec;
+      }
+      .msg-row {
+        display: flex;
+        margin-bottom: 12px;
+        gap: 8px;
+        align-items: flex-start;
+        animation: msgIn 0.25s var(--ease);
+      }
+      @keyframes msgIn {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .msg-row.sent {
+        flex-direction: row-reverse;
+      }
+      .msg-row .msg-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 6px;
+        background: #d0d0d0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        flex-shrink: 0;
+      }
+      .msg-row.sent .msg-avatar {
+        background: linear-gradient(135deg, var(--wc-green) 0%, #06ad56 100%);
+      }
+      /* CRITICAL FIX: min-width: 0 prevents flex items from forcing 1-character columns */
+      .msg-content-wrap {
+        max-width: 75%;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+      }
+      .msg-bubble {
+        padding: 9px 13px;
+        border-radius: 6px;
+        font-size: 14px;
+        line-height: 1.5;
+        word-wrap: break-word;
+        word-break: break-word;
+        overflow-wrap: break-word;
+        white-space: pre-wrap;
+        position: relative;
+      }
+      .msg-row.recv .msg-bubble {
+        background: #fff;
+        color: #222;
+        border-top-left-radius: 2px;
+      }
+      .msg-row.sent .msg-bubble {
+        background: var(--wc-green);
+        color: #fff;
+        border-top-right-radius: 2px;
+      }
+      .msg-time {
+        font-size: 10px;
+        margin-top: 3px;
+        opacity: 0.7;
+      }
+      .msg-row.sent .msg-time {
+        text-align: right;
+        color: rgba(255, 255, 255, 0.8);
+      }
+      .msg-row.recv .msg-time {
+        color: #999;
+      }
+
+      .msg-date-divider {
+        text-align: center;
+        color: #999;
+        font-size: 11px;
+        margin: 14px 0;
+        position: relative;
+      }
+      .msg-date-divider span {
+        background: #ececec;
+        padding: 0 10px;
+        position: relative;
+        z-index: 1;
+      }
+      .msg-date-divider::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 50%;
+        border-top: 1px solid #d6d6d6;
+      }
+
+      .typing-indicator {
+        padding: 4px 14px;
+        font-size: 12px;
+        color: #888;
+        font-style: italic;
+        min-height: 20px;
+      }
+      .typing-indicator .dots::after {
+        content: "...";
+        animation: typingDots 1.2s infinite;
+      }
+      @keyframes typingDots {
+        0% {
+          content: ".";
+        }
+        33% {
+          content: "..";
+        }
+        66% {
+          content: "...";
+        }
+      }
+
+      .chat-input-row {
+        background: #f5f5f5;
+        padding: 10px 12px;
+        border-top: 1px solid #d6d6d6;
+        display: flex;
+        gap: 8px;
+        align-items: flex-end;
+      }
+      .chat-input {
+        flex: 1;
+        min-height: 38px;
+        max-height: 100px;
+        padding: 9px 12px;
+        background: #fff;
+        border: 1px solid #d6d6d6;
+        border-radius: 6px;
+        font-family: inherit;
+        font-size: 14px;
+        resize: none;
+        outline: none;
+        transition: border 0.15s var(--ease);
+      }
+      .chat-input:focus {
+        border-color: var(--wc-green);
+      }
+      .send-btn {
+        background: var(--wc-green);
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 9px 18px;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.15s var(--ease);
+        font-family: inherit;
+      }
+      .send-btn:hover:not(:disabled) {
+        background: var(--wc-green-dark);
+      }
+      .send-btn:disabled {
+        background: #c0c0c0;
+        cursor: not-allowed;
+      }
+
+      /* ==========================================================================
+   TOAST
+   ========================================================================== */
+      .toast-stack {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 3000;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .toast {
+        background: var(--navy-900);
+        color: #fff;
+        padding: 12px 18px;
+        border-radius: 8px;
+        box-shadow: var(--shadow-md);
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 240px;
+        max-width: 360px;
+        animation: toastIn 0.3s var(--ease);
+        border-left: 3px solid var(--wc-green);
+      }
+      .toast.error {
+        border-left-color: var(--danger);
+      }
+      .toast.warn {
+        border-left-color: var(--warn);
+      }
+      @keyframes toastIn {
+        from {
+          opacity: 0;
+          transform: translateX(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+
+      /* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+      @media (max-width: 1100px) {
+        #app-root.visible {
+          grid-template-columns: 1fr;
+        }
+        .sidebar {
+          display: none;
+        }
+      }
+      @media (max-width: 900px) {
+        .game-area {
+          grid-template-columns: 1fr;
+        }
+        .status-panel {
+          max-height: 300px;
+        }
+        .chat-drawer {
+          width: 100vw;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- AUTH SCREEN -->
+    <div class="auth-wrap" id="authWrap">
+      <div class="auth-card">
+        <div class="auth-logo">
+          <span class="icon">⚓</span>
+          <h1>PortMasters</h1>
+          <p>Maritime Trade · Multiplayer</p>
+        </div>
+        <div class="auth-tabs">
+          <div class="auth-tab active" data-tab="login">Sign In</div>
+          <div class="auth-tab" data-tab="register">Create Account</div>
+        </div>
+        <form id="authForm">
+          <div class="auth-field">
+            <label>Username</label>
+            <input
+              type="text"
+              id="authUser"
+              autocomplete="username"
+              maxlength="20"
+              placeholder="PortMaster"
+              required
+            />
+          </div>
+          <div class="auth-field">
+            <label>Password</label>
+            <input
+              type="password"
+              id="authPass"
+              autocomplete="current-password"
+              minlength="4"
+              placeholder="••••••••"
+              required
+            />
+          </div>
+          <button type="submit" class="auth-btn" id="authBtn">Sign In</button>
+          <div class="auth-msg" id="authMsg"></div>
+        </form>
+        <div class="auth-footer">
+          <div>
+            🌐 Play with friends · 💬 Private chat · 🏆 Live leaderboard
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div id="app-root">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <div class="me-row">
+            <div class="avatar lg" id="meAvatar">
+              🚢<span class="avatar-dot"></span>
+            </div>
+            <div class="me-info">
+              <div class="me-name" id="meName">—</div>
+              <div class="me-stats">
+                💰 <span id="meGold">0</span> · 🏆 <span id="meScore">0</span> ·
+                R<span id="meRound">1</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sidebar-tabs">
+          <div class="side-tab active" data-stab="online">
+            🌐 Online
+            <span class="badge" id="onlineBadge" style="display: none">0</span>
+          </div>
+          <div class="side-tab" data-stab="chats">
+            💬 Chats
+            <span class="badge" id="chatBadge" style="display: none">0</span>
+          </div>
+        </div>
+        <div class="sidebar-body" id="sidebarBody"></div>
+        <div class="sidebar-footer">
+          <button class="logout-btn" id="logoutBtn">🚪 Sign Out</button>
+        </div>
+      </aside>
+
+      <main class="game-area" id="gameArea">
+        <div class="header">
+          <div>
+            <h1>⚓ PortMasters 🚢</h1>
+            <div class="subtitle">
+              Maritime Trade | Vessel Upgrades | Artisan Crafting | Taxation
+            </div>
+          </div>
+          <div class="shortcuts">
+            Shortcuts: Ctrl+S Save | Ctrl+N Next | Ctrl+H Artisans | Ctrl+R
+            Restart | F1 Help
+          </div>
+        </div>
+
+        <div class="status-panel" id="status-panel"></div>
+        <div class="phase-panel" id="phase-panel"></div>
+        <div class="control-panel" id="control-panel"></div>
+        <div class="log-panel" id="log-panel"></div>
+      </main>
+    </div>
+
+    <div id="chatRoot"></div>
+    <div id="modal-root"></div>
+    <div class="toast-stack" id="toastStack"></div>
+    <canvas id="particles-canvas"></canvas>
+
+    <script>
+      "use strict";
+      // =====================================================================
+      // PortMasters: Multiplayer Edition
+      // =====================================================================
+
+      const ICONS = {
+        Hemp: "🧶",
+        Silk: "👘",
+        Tea: "🍵",
+        "Linen Clothes": "👔",
+        "Cotton Clothes": "👕",
+        Brocade: "👗",
+        Sachet: "🌸",
+      };
+      const COLORS = {
+        Hemp: "#8B7355",
+        Silk: "#DC143C",
+        Tea: "#228B22",
+        "Linen Clothes": "#D2691E",
+        "Cotton Clothes": "#4169E1",
+        Brocade: "#8B008B",
+        Sachet: "#FF1493",
+      };
+      const RESOURCES = ["Hemp", "Silk", "Tea"];
+      const PRODUCTS = ["Linen Clothes", "Cotton Clothes", "Brocade", "Sachet"];
+      const PORTS = [
+        "Quanzhou Port",
+        "Guangzhou Port",
+        "Ningbo Port",
+        "Yangzhou Port",
+        "Hangzhou Port",
+      ];
+
+      const RECIPES = {
+        "Linen Clothes": {
+          materials: { Hemp: 2 },
+          value: 15,
+          worker_type: "weaver",
+        },
+        "Cotton Clothes": {
+          materials: { Hemp: 2, Silk: 1 },
+          value: 35,
+          worker_type: "weaver",
+        },
+        Brocade: { materials: { Silk: 3 }, value: 60, worker_type: "master" },
+        Sachet: {
+          materials: { Silk: 1, Tea: 2 },
+          value: 80,
+          worker_type: "sachet_maker",
+        },
+      };
+      const COMMODITIES = {
+        Hemp: { ports: ["Quanzhou Port", "Ningbo Port"], basePrice: [3, 6] },
+        Silk: { ports: ["Hangzhou Port", "Yangzhou Port"], basePrice: [6, 10] },
+        Tea: {
+          ports: ["Guangzhou Port", "Quanzhou Port"],
+          basePrice: [10, 14],
+        },
+      };
+      const PRODUCT_PRICES = {
+        "Linen Clothes": [30, 42],
+        "Cotton Clothes": [50, 65],
+        Brocade: [70, 90],
+        Sachet: [95, 120],
+      };
+      const RESOURCE_PROBS = { Hemp: 0.4, Silk: 0.35, Tea: 0.25 };
+      const WAGES = { weaver: 8, master: 12, sachet_maker: 20 };
+
+      const BOONS = [
+        {
+          id: "silk_wind",
+          name: "Silk Winds",
+          icon: "🌬️",
+          desc: "Transport cost for Silk & Silk products is halved this round.",
+          modifiers: { transport_silk_discount: 0.5 },
+        },
+        {
+          id: "favorable_tides",
+          name: "Favorable Tides",
+          icon: "🌊",
+          desc: "Base transport cost reduced by 4 Gold this round.",
+          modifiers: { transport_flat_discount: 4 },
+        },
+        {
+          id: "merchant_charm",
+          name: "Merchant's Charm",
+          icon: "✨",
+          desc: "15% discount on all port purchases this round.",
+          modifiers: { purchase_discount: 0.15 },
+        },
+        {
+          id: "artisan_inspiration",
+          name: "Artisan's Inspiration",
+          icon: "🔨",
+          desc: "All workers produce +1 extra item this round.",
+          modifiers: { worker_bonus_production: 1 },
+        },
+        {
+          id: "emergency_loan",
+          name: "Emergency Loan",
+          icon: "💰",
+          desc: "Gain 40 Gold immediately. No strings attached.",
+          modifiers: { instant_gold: 40 },
+        },
+        {
+          id: "tax_shelter",
+          name: "Tax Shelter",
+          icon: "📜",
+          desc: "Income tax rate reduced to 5% this round.",
+          modifiers: { income_tax_override: 0.05 },
+        },
+        {
+          id: "hemp_monopoly",
+          name: "Hemp Monopoly",
+          icon: "🧶",
+          desc: "Hemp purchase prices reduced by 2 Gold per unit.",
+          modifiers: { hemp_price_reduction: 2 },
+        },
+        {
+          id: "master_apprentice",
+          name: "Master's Apprentice",
+          icon: "🎓",
+          desc: "Hiring workers costs 50% less this round.",
+          modifiers: { hire_discount: 0.5 },
+        },
+      ];
+
+      const MODULES = [
+        {
+          id: "smugglers_hold",
+          name: "Smuggler's Hold",
+          icon: "🏴‍☠️",
+          desc: "Purchase costs -15%. Income Tax +20%.",
+        },
+        {
+          id: "bulk_hauler",
+          name: "Bulk Hauler Rigging",
+          icon: "🏗️",
+          desc: "Transport cost -1 per item. Ship upgrades cost +15 Gold.",
+        },
+        {
+          id: "artisans_workshop",
+          name: "Artisan's Workshop",
+          icon: "🛠️",
+          desc: "Workers produce +1 item. Wages +20%.",
+        },
+        {
+          id: "tax_evasion",
+          name: "Tax Evasion Ledger",
+          icon: "📕",
+          desc: "Income Tax & VAT halved. 15% chance to lose 20 Gold on order complete (Audit).",
+        },
+        {
+          id: "silk_monopoly",
+          name: "Silk Road Monopoly",
+          icon: "👘",
+          desc: "Silk transport cost is 0. Silk product orders yield +20% reward.",
+        },
+        {
+          id: "brokers_network",
+          name: "Broker's Network",
+          icon: "🕵️",
+          desc: "Intel costs 2 Gold. Reveals 2 rumors per purchase.",
+        },
+        {
+          id: "salvage_crane",
+          name: "Salvage Crane",
+          icon: "♻️",
+          desc: "30% chance to refund transport cost on order complete.",
+        },
+        {
+          id: "overdrive_engine",
+          name: "Overdrive Engine",
+          icon: "⚙️",
+          desc: "Transport cost -5 Gold. Maintenance +10 Gold.",
+        },
+      ];
+
+      const game = {
+        inventory: {
+          Hemp: 8,
+          Silk: 5,
+          Tea: 3,
+          "Linen Clothes": 0,
+          "Cotton Clothes": 0,
+          Brocade: 0,
+          Sachet: 0,
+        },
+        money: 100,
+        score: 0,
+        currentRound: 1,
+        maxRounds: 8,
+        totalRevenue: 0,
+        totalCosts: 0,
+        materialCosts: 0,
+        workerWages: 0,
+        maintenanceCosts: 0,
+        vatPaid: 0,
+        incomeTaxPaid: 0,
+        roundRevenue: 0,
+        roundCosts: 0,
+        weavers: [],
+        masterWeavers: [],
+        sachetMakers: [],
+        fixedCost: 15,
+        shipLevel: 0,
+        shipUpgradeCost: [15, 25, 40],
+        shipUpgradePenalty: 0,
+        maintenancePenalty: 0,
+        phase: 0,
+        resourceCards: [],
+        customerCards: [],
+        purchasedCards: new Set(),
+        completedOrders: new Set(),
+        purchaseCount: 0,
+        orderCount: 0,
+        gameOver: false,
+        modifierFlags: {},
+        phase2DemandTags: [],
+        revealedIntel: [],
+        intelCost: 5,
+        intelOrderUsed: false,
+        equippedModules: [],
+      };
+      const logs = [];
+      const social = {
+        me: null,
+        users: [],
+        chats: new Map(),
+        unread: {},
+        activeChat: null,
+        sidebarTab: "online",
+        typingPeer: null,
+      };
+
+      let socket = null;
+
+      const $ = (sel, root = document) => root.querySelector(sel);
+      const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+
+      let authTab = "login";
+      $$(".auth-tab").forEach((t) => {
+        t.addEventListener("click", () => {
+          $$(".auth-tab").forEach((x) => x.classList.remove("active"));
+          t.classList.add("active");
+          authTab = t.dataset.tab;
+          $("#authBtn").textContent =
+            authTab === "login" ? "Sign In" : "Create Account";
+          $("#authMsg").textContent = "";
+          $("#authMsg").className = "auth-msg";
+        });
+      });
+
+      $("#authForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const u = $("#authUser").value.trim();
+        const p = $("#authPass").value;
+        const msg = $("#authMsg");
+        const btn = $("#authBtn");
+        btn.disabled = true;
+        btn.textContent = "...";
+        try {
+          const res = await fetch(`/api/${authTab}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: u, password: p }),
+          });
+          const d = await res.json();
+          if (!d.ok) {
+            msg.textContent = d.msg;
+            msg.className = "auth-msg error";
+            btn.disabled = false;
+            btn.textContent =
+              authTab === "login" ? "Sign In" : "Create Account";
+            return;
+          }
+          msg.textContent = "Welcome aboard, Captain! ⚓";
+          msg.className = "auth-msg ok";
+          setTimeout(() => enterApp(d.user), 400);
+        } catch (err) {
+          msg.textContent = "Network error. Try again.";
+          msg.className = "auth-msg error";
+          btn.disabled = false;
+          btn.textContent = authTab === "login" ? "Sign In" : "Create Account";
+        }
+      });
+
+      async function enterApp(user) {
+        social.me = user;
+        $("#authWrap").style.display = "none";
+        $("#app-root").classList.add("visible");
+        $("#meName").textContent = user.username;
+        $("#meAvatar").firstChild.textContent = user.avatar_emoji;
+        updateMeStats();
+        connectSocket();
+        await loadUsers();
+        await loadServerGameState();
+        showWelcome();
+      }
+
+      function updateMeStats() {
+        if (!social.me) return;
+        $("#meGold").textContent = social.me.gold;
+        $("#meScore").textContent = social.me.score;
+        $("#meRound").textContent = social.me.current_round;
+      }
+
+      $("#logoutBtn").addEventListener("click", async () => {
+        if (!confirm("Sign out?")) return;
+        await fetch("/api/logout", { method: "POST" });
+        if (socket) socket.disconnect();
+        location.reload();
+      });
+
+      function connectSocket() {
+        socket = io({ transports: ["websocket", "polling"] });
+        socket.on("connect", () => console.log("🔌 Socket connected"));
+        socket.on("disconnect", () => console.log("🔌 Socket disconnected"));
+
+        socket.on("presence_update", (data) => {
+          social.users = data.users;
+          renderSidebar();
+          const me = social.users.find((u) => u.id === social.me.id);
+          if (me) {
+            social.me = me;
+            updateMeStats();
+          }
+          if (social.activeChat) updateChatHeader();
+        });
+
+        socket.on("new_message", (msg) => {
+          const peerId =
+            msg.sender_id === social.me.id ? msg.receiver_id : msg.sender_id;
+          if (!social.chats.has(peerId)) social.chats.set(peerId, []);
+          const arr = social.chats.get(peerId);
+          if (!arr.some((m) => m.id === msg.id)) arr.push(msg);
+          if (msg.sender_id !== social.me.id && social.activeChat !== peerId) {
+            social.unread[peerId] = (social.unread[peerId] || 0) + 1;
+            const peer = social.users.find((u) => u.id === peerId);
+            if (peer)
+              toast(
+                `💬 ${peer.username}: ${msg.content.slice(0, 40)}${msg.content.length > 40 ? "…" : ""}`,
+                "info",
+                4000,
+              );
+          }
+          if (social.activeChat === peerId) renderChatMessages();
+          renderSidebar();
+        });
+
+        socket.on("unread_update", (data) => {
+          if (data.user_id === social.me.id) {
+            social.unread = data.unread;
+            renderSidebar();
+          }
+        });
+
+        socket.on("user_typing", (data) => {
+          if (social.activeChat === data.user_id) {
+            social.typingPeer = data.username;
+            renderTypingIndicator();
+            clearTimeout(window._typingTimeout);
+            window._typingTimeout = setTimeout(() => {
+              social.typingPeer = null;
+              renderTypingIndicator();
+            }, 2500);
+          }
+        });
+      }
+
+      async function loadUsers() {
+        const res = await fetch("/api/users");
+        const d = await res.json();
+        if (d.ok) {
+          social.users = d.users;
+          renderSidebar();
+        }
+      }
+
+      async function loadServerGameState() {
+        try {
+          const res = await fetch("/api/game/load");
+          const d = await res.json();
+          if (d.ok && d.game_state && Object.keys(d.game_state).length > 0) {
+            applyGameState(d.game_state);
+            log("📂 Cloud save restored");
+          }
+        } catch (e) {
+          console.warn(e);
+        }
+      }
+
+      function applyGameState(gs) {
+        for (const k of [
+          "money",
+          "score",
+          "currentRound",
+          "maxRounds",
+          "totalRevenue",
+          "totalCosts",
+          "materialCosts",
+          "workerWages",
+          "maintenanceCosts",
+          "vatPaid",
+          "incomeTaxPaid",
+          "roundRevenue",
+          "roundCosts",
+          "fixedCost",
+          "shipLevel",
+          "shipUpgradePenalty",
+          "maintenancePenalty",
+          "phase",
+          "purchaseCount",
+          "orderCount",
+          "gameOver",
+          "intelCost",
+          "intelOrderUsed",
+        ]) {
+          if (gs[k] !== undefined) game[k] = gs[k];
+        }
+        if (gs.inventory) Object.assign(game.inventory, gs.inventory);
+        if (Array.isArray(gs.weavers)) game.weavers = gs.weavers;
+        if (Array.isArray(gs.masterWeavers))
+          game.masterWeavers = gs.masterWeavers;
+        if (Array.isArray(gs.sachetMakers)) game.sachetMakers = gs.sachetMakers;
+        if (Array.isArray(gs.equippedModules))
+          game.equippedModules = gs.equippedModules;
+        if (Array.isArray(gs.shipUpgradeCost))
+          game.shipUpgradeCost = gs.shipUpgradeCost;
+        game.purchasedCards = new Set(gs.purchasedCards || []);
+        game.completedOrders = new Set(gs.completedOrders || []);
+        game.modifierFlags = gs.modifierFlags || {};
+        game.phase2DemandTags = gs.phase2DemandTags || [];
+        game.revealedIntel = gs.revealedIntel || [];
+      }
+
+      function serializeGameState() {
+        return {
+          money: game.money,
+          score: game.score,
+          currentRound: game.currentRound,
+          maxRounds: game.maxRounds,
+          totalRevenue: game.totalRevenue,
+          totalCosts: game.totalCosts,
+          materialCosts: game.materialCosts,
+          workerWages: game.workerWages,
+          maintenanceCosts: game.maintenanceCosts,
+          vatPaid: game.vatPaid,
+          incomeTaxPaid: game.incomeTaxPaid,
+          roundRevenue: game.roundRevenue,
+          roundCosts: game.roundCosts,
+          inventory: game.inventory,
+          weavers: game.weavers,
+          masterWeavers: game.masterWeavers,
+          sachetMakers: game.sachetMakers,
+          fixedCost: game.fixedCost,
+          shipLevel: game.shipLevel,
+          shipUpgradeCost: game.shipUpgradeCost,
+          shipUpgradePenalty: game.shipUpgradePenalty,
+          maintenancePenalty: game.maintenancePenalty,
+          phase: game.phase,
+          purchasedCards: [...game.purchasedCards],
+          completedOrders: [...game.completedOrders],
+          purchaseCount: game.purchaseCount,
+          orderCount: game.orderCount,
+          gameOver: game.gameOver,
+          modifierFlags: game.modifierFlags,
+          phase2DemandTags: game.phase2DemandTags,
+          revealedIntel: game.revealedIntel,
+          intelCost: game.intelCost,
+          intelOrderUsed: game.intelOrderUsed,
+          equippedModules: game.equippedModules,
+        };
+      }
+
+      let _saveDebounce = null;
+      async function saveGameToServer() {
+        if (!social.me) return;
+        clearTimeout(_saveDebounce);
+        _saveDebounce = setTimeout(async () => {
+          try {
+            await fetch("/api/game/save", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                money: game.money,
+                score: game.score,
+                currentRound: game.currentRound,
+                maxRounds: game.maxRounds,
+                phase: game.phase,
+                state: serializeGameState(),
+              }),
+            });
+          } catch (e) {
+            console.warn("Save failed", e);
+          }
+        }, 300);
+      }
+
+      $$(".side-tab").forEach((t) => {
+        t.addEventListener("click", () => {
+          $$(".side-tab").forEach((x) => x.classList.remove("active"));
+          t.classList.add("active");
+          social.sidebarTab = t.dataset.stab;
+          renderSidebar();
+        });
+      });
+
+      function renderSidebar() {
+        const body = $("#sidebarBody");
+        if (social.sidebarTab === "online") renderOnlineTab(body);
+        else renderChatsTab(body);
+
+        const onlineCount = social.users.filter(
+          (u) => u.online && u.id !== social.me.id,
+        ).length;
+        const onlineBadge = $("#onlineBadge");
+        if (onlineCount > 0) {
+          onlineBadge.style.display = "";
+          onlineBadge.textContent = onlineCount;
+        } else onlineBadge.style.display = "none";
+
+        const totalUnread = Object.values(social.unread).reduce(
+          (a, b) => a + b,
+          0,
+        );
+        const chatBadge = $("#chatBadge");
+        if (totalUnread > 0) {
+          chatBadge.style.display = "";
+          chatBadge.textContent = totalUnread;
+        } else chatBadge.style.display = "none";
+      }
+
+      function phaseLabel(phase) {
+        const map = {
+          0: "Lobby",
+          1: "Buying",
+          2: "Trading",
+          3: "Settlement",
+          4: "Shipyard",
+          5: "Drafting",
+          worker_mgmt: "Workshop",
+          endgame: "Finished",
+          bankruptcy: "Bankrupt",
+          module_draft: "Modules",
+          module_swap: "Modules",
+        };
+        return map[String(phase)] || "Playing";
+      }
+
+      function renderOnlineTab(body) {
+        const me = social.me;
+        const others = social.users.filter((u) => u.id !== me.id);
+        const online = others.filter((u) => u.online);
+        const offline = others.filter((u) => !u.online);
+
+        if (others.length === 0) {
+          body.innerHTML = `<div class="empty-state">
+      <div class="icon">🌊</div>
+      <div>The seas are empty.</div>
+      <div style="margin-top:6px">Share the URL with friends!</div>
+    </div>`;
+          return;
+        }
+
+        const row = (u) => `
+    <div class="user-row ${social.activeChat === u.id ? "active" : ""}" data-uid="${u.id}">
+      <div class="avatar sm" style="background:${u.online ? "linear-gradient(135deg,#07C160,#06AD56)" : "#555"}">${u.avatar_emoji}</div>
+      <div class="info">
+        <div class="name">${escapeHtml(u.username)} <span class="online-dot ${u.online ? "on" : ""}"></span>
+          ${social.unread[u.id] ? `<span style="background:#FF5252;color:#fff;font-size:10px;padding:1px 5px;border-radius:8px;margin-left:4px;font-weight:600">${social.unread[u.id]}</span>` : ""}
+        </div>
+        <div class="meta">${u.online ? phaseLabel(u.phase) + " · " : ""}R${u.current_round}/${u.max_rounds} · 💰${u.gold} · 🏆${u.score}</div>
+      </div>
+    </div>`;
+
+        body.innerHTML = `
+    <div class="section-label">🟢 Online — ${online.length}</div>
+    ${online.length ? online.map(row).join("") : '<div class="empty-state" style="padding:16px"><div class="icon">👤</div>No one else online</div>'}
+    ${offline.length ? `<div class="section-label" style="margin-top:12px">⚫ Offline — ${offline.length}</div>${offline.map(row).join("")}` : ""}
+  `;
+
+        body.querySelectorAll(".user-row").forEach((r) => {
+          r.addEventListener("click", () => openChat(parseInt(r.dataset.uid)));
+        });
+      }
+
+      function renderChatsTab(body) {
+        const peerIds = new Set([...social.chats.keys()]);
+        for (const k of Object.keys(social.unread)) peerIds.add(parseInt(k));
+
+        if (peerIds.size === 0) {
+          body.innerHTML = `<div class="empty-state">
+      <div class="icon">💬</div>
+      <div>No conversations yet.</div>
+      <div style="margin-top:6px">Click an online player to start chatting.</div>
+    </div>`;
+          return;
+        }
+
+        const list = [...peerIds]
+          .map((id) => {
+            const u = social.users.find((x) => x.id === id);
+            const msgs = social.chats.get(id) || [];
+            const last = msgs[msgs.length - 1];
+            return { id, user: u, last, unread: social.unread[id] || 0 };
+          })
+          .filter((x) => x.user)
+          .sort((a, b) => {
+            if (a.unread && !b.unread) return -1;
+            if (!a.unread && b.unread) return 1;
+            const at = a.last ? new Date(a.last.timestamp).getTime() : 0;
+            const bt = b.last ? new Date(b.last.timestamp).getTime() : 0;
+            return bt - at;
+          });
+
+        body.innerHTML = list
+          .map(
+            ({ id, user, last, unread }) => `
+    <div class="user-row ${social.activeChat === id ? "active" : ""}" data-uid="${id}">
+      <div class="avatar sm" style="background:${user.online ? "linear-gradient(135deg,#07C160,#06AD56)" : "#555"}">${user.avatar_emoji}</div>
+      <div class="info">
+        <div class="name">${escapeHtml(user.username)} <span class="online-dot ${user.online ? "on" : ""}"></span>
+          ${unread ? `<span style="background:#FF5252;color:#fff;font-size:10px;padding:1px 5px;border-radius:8px;margin-left:4px;font-weight:600">${unread}</span>` : ""}
+        </div>
+        <div class="meta">${last ? (last.sender_id === social.me.id ? "You: " : "") + escapeHtml(last.content.slice(0, 40)) : "Say hello 👋"}</div>
+      </div>
+    </div>
+  `,
+          )
+          .join("");
+
+        body.querySelectorAll(".user-row").forEach((r) => {
+          r.addEventListener("click", () => openChat(parseInt(r.dataset.uid)));
+        });
+      }
+
+      async function openChat(peerId) {
+        if (peerId === social.me.id) return;
+        social.activeChat = peerId;
+        social.unread[peerId] = 0;
+        renderSidebar();
+
+        if (!social.chats.has(peerId)) {
+          try {
+            const res = await fetch(`/api/chat/${peerId}`);
+            const d = await res.json();
+            if (d.ok) social.chats.set(peerId, d.messages);
+          } catch (e) {
+            social.chats.set(peerId, []);
+          }
+        }
+
+        renderChatDrawer();
+      }
+
+      function closeChat() {
+        social.activeChat = null;
+        $("#chatRoot").innerHTML = "";
+        renderSidebar();
+      }
+
+      function updateChatHeader() {
+        if (!social.activeChat) return;
+        const peer = social.users.find((u) => u.id === social.activeChat);
+        if (!peer) return;
+        const status = $("#chatPeerStatus");
+        if (status)
+          status.textContent = peer.online ? "🟢 Online" : "⚫ Offline";
+      }
+
+      function renderChatDrawer() {
+        const peer = social.users.find((u) => u.id === social.activeChat);
+        if (!peer) return;
+        const root = $("#chatRoot");
+        root.innerHTML = `
+    <div class="chat-drawer-backdrop" id="chatBackdrop"></div>
+    <div class="chat-drawer">
+      <div class="chat-header">
+        <button class="back-btn" id="chatCloseBtn">✕</button>
+        <div class="peer">
+          <div class="avatar" style="background:${peer.online ? "linear-gradient(135deg,#07C160,#06AD56)" : "#555"}">${peer.avatar_emoji}</div>
+          <div>
+            <div class="peer-name">${escapeHtml(peer.username)}</div>
+            <div class="peer-status" id="chatPeerStatus">${peer.online ? "🟢 Online" : "⚫ Offline"}</div>
+          </div>
+        </div>
+      </div>
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="typing-indicator" id="typingIndicator"></div>
+      <div class="chat-input-row">
+        <textarea class="chat-input" id="chatInput" placeholder="Type a message..." maxlength="1000" rows="1"></textarea>
+        <button class="send-btn" id="chatSendBtn">Send</button>
+      </div>
+    </div>`;
+
+        $("#chatBackdrop").addEventListener("click", closeChat);
+        $("#chatCloseBtn").addEventListener("click", closeChat);
+
+        const input = $("#chatInput");
+        const sendBtn = $("#chatSendBtn");
+
+        const send = () => {
+          const txt = input.value.trim();
+          if (!txt || !socket) return;
+          socket.emit("send_message", {
+            peer_id: social.activeChat,
+            content: txt,
+          });
+          input.value = "";
+          input.style.height = "auto";
+        };
+        sendBtn.addEventListener("click", send);
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            send();
+          }
+        });
+
+        let _typingDebounce = null;
+        input.addEventListener("input", () => {
+          input.style.height = "auto";
+          input.style.height = Math.min(100, input.scrollHeight) + "px";
+          if (socket && social.activeChat) {
+            clearTimeout(_typingDebounce);
+            _typingDebounce = setTimeout(() => {
+              socket.emit("typing", { peer_id: social.activeChat });
+            }, 800);
+          }
+        });
+
+        renderChatMessages();
+        setTimeout(() => input.focus(), 100);
+      }
+
+      function renderChatMessages() {
+        const box = $("#chatMessages");
+        if (!box || !social.activeChat) return;
+        const msgs = social.chats.get(social.activeChat) || [];
+        let html = "";
+        let lastDate = null;
+        for (const m of msgs) {
+          const d = new Date(m.timestamp);
+          const dateStr = d.toLocaleDateString();
+          if (dateStr !== lastDate) {
+            html += `<div class="msg-date-divider"><span>${dateStr}</span></div>`;
+            lastDate = dateStr;
+          }
+          const sent = m.sender_id === social.me.id;
+          const who = sent
+            ? social.me
+            : social.users.find((u) => u.id === m.sender_id);
+          const timeStr = d.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          html += `
+      <div class="msg-row ${sent ? "sent" : "recv"}">
+        <div class="msg-avatar">${who ? who.avatar_emoji : "👤"}</div>
+        <div class="msg-content-wrap">
+          <div class="msg-bubble">${escapeHtml(m.content)}</div>
+          <div class="msg-time">${timeStr}</div>
+        </div>
+      </div>`;
+        }
+        if (msgs.length === 0) {
+          html = `<div class="empty-state" style="padding:40px 20px;color:#888">
+      <div class="icon" style="font-size:48px;opacity:0.4">👋</div>
+      <div style="margin-top:8px">Start a conversation!</div>
+    </div>`;
+        }
+        box.innerHTML = html;
+        box.scrollTop = box.scrollHeight;
+      }
+
+      function renderTypingIndicator() {
+        const el = $("#typingIndicator");
+        if (!el) return;
+        if (social.typingPeer)
+          el.innerHTML = `${escapeHtml(social.typingPeer)} is typing<span class="dots"></span>`;
+        else el.innerHTML = "";
+      }
+
+      function toast(msg, type = "info", duration = 3000) {
+        const stack = $("#toastStack");
+        const t = document.createElement("div");
+        t.className = "toast " + type;
+        t.innerHTML = `<span>${escapeHtml(msg)}</span>`;
+        stack.appendChild(t);
+        setTimeout(() => {
+          t.style.transition = "opacity 0.3s, transform 0.3s";
+          t.style.opacity = "0";
+          t.style.transform = "translateX(20px)";
+          setTimeout(() => t.remove(), 300);
+        }, duration);
+      }
+
+      function rand(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+      }
+      function choice(arr) {
+        return arr[Math.floor(Math.random() * arr.length)];
+      }
+      function weightedChoice(items) {
+        const total = items.reduce((s, [, w]) => s + w, 0);
+        let r = Math.random() * total;
+        for (const [item, w] of items) {
+          r -= w;
+          if (r <= 0) return item;
+        }
+        return items[0][0];
+      }
+      function log(msg) {
+        logs.push(msg);
+        if (logs.length > 500) logs.shift();
+        renderLog();
+      }
+      function hasModule(id) {
+        return game.equippedModules.some((m) => m.id === id);
+      }
+      function escapeHtml(s) {
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      function calcTransportCost(totalItems, hasSilk = false) {
+        let base = totalItems * 2;
+        let discount = game.shipLevel * 5;
+        if (game.modifierFlags.transport_flat_discount)
+          discount += game.modifierFlags.transport_flat_discount;
+        let cost = Math.max(5, base - discount);
+        if (hasSilk && game.modifierFlags.transport_silk_discount)
+          cost = Math.max(
+            5,
+            Math.floor(cost * game.modifierFlags.transport_silk_discount),
+          );
+        if (hasModule("bulk_hauler")) cost = Math.max(0, cost - totalItems);
+        if (hasModule("overdrive_engine")) cost = Math.max(0, cost - 5);
+        if (hasModule("silk_monopoly") && hasSilk) cost = 0;
+        return Math.max(0, cost);
+      }
+      function calcVAT(product, sellingPrice) {
+        const recipe = RECIPES[product];
+        let matCost = 0;
+        for (const [m, a] of Object.entries(recipe.materials)) {
+          matCost +=
+            ((COMMODITIES[m].basePrice[0] + COMMODITIES[m].basePrice[1]) / 2) *
+            a;
+        }
+        const workerCost = WAGES[recipe.worker_type];
+        const taxable = sellingPrice - matCost - workerCost;
+        if (taxable > 0) {
+          let vat = Math.floor(taxable * 0.05);
+          if (hasModule("tax_evasion")) vat = Math.floor(vat * 0.5);
+          return vat;
+        }
+        return 0;
+      }
+      function calcIncomeTax(preTax) {
+        if (preTax <= 0) return 0;
+        const rate = game.modifierFlags.income_tax_override || 0.1;
+        let tax = Math.floor(preTax * rate);
+        if (hasModule("smugglers_hold")) tax = Math.floor(tax * 1.2);
+        if (hasModule("tax_evasion")) tax = Math.floor(tax * 0.5);
+        return tax;
+      }
+      function getCardFinalCost(card) {
+        let cost = card.totalCost;
+        if (game.modifierFlags.purchase_discount)
+          cost = Math.floor(cost * (1 - game.modifierFlags.purchase_discount));
+        if (game.modifierFlags.hemp_price_reduction) {
+          for (const r of card.resources)
+            if (r.type === "Hemp")
+              cost -= r.quantity * game.modifierFlags.hemp_price_reduction;
+        }
+        if (hasModule("smugglers_hold")) cost = Math.floor(cost * 0.85);
+        return Math.max(0, cost);
+      }
+      function getHireCost(type) {
+        let wage = WAGES[type];
+        if (game.modifierFlags.hire_discount)
+          wage = Math.floor(wage * (1 - game.modifierFlags.hire_discount));
+        return wage;
+      }
+
+      function genRawOrder(filter = null) {
+        const num = rand(1, 3);
+        const resources = [];
+        const available = [...RESOURCES];
+        const port = choice(PORTS);
+        let total = 0;
+        if (filter && RESOURCES.includes(filter)) {
+          const req = rand(2, 5);
+          total += req;
+          resources.push({ type: filter, required: req });
+        } else {
+          for (let i = 0; i < num; i++) {
+            if (!available.length) break;
+            const r = choice(available);
+            available.splice(available.indexOf(r), 1);
+            const req = rand(2, 5);
+            total += req;
+            resources.push({ type: r, required: req });
+          }
+        }
+        const base = resources.reduce((s, r) => s + r.required * 5, 0);
+        return {
+          demandPort: port,
+          resources,
+          reward: base + rand(10, 25),
+          totalItems: total,
+          isProductOrder: false,
+        };
+      }
+      function genProductOrder(filter = null) {
+        const product =
+          filter && PRODUCTS.includes(filter) ? filter : choice(PRODUCTS);
+        const req = rand(1, 3);
+        const port = choice(PORTS);
+        const basePrice = rand(...PRODUCT_PRICES[product]);
+        return {
+          demandPort: port,
+          resources: [{ type: product, required: req }],
+          reward: basePrice * req,
+          totalItems: req,
+          isProductOrder: true,
+        };
+      }
+      function genMixedOrder() {
+        if (game.revealedIntel.length && !game.intelOrderUsed) {
+          const intel = choice(game.revealedIntel);
+          game.intelOrderUsed = true;
+          if (RESOURCES.includes(intel.item)) return genRawOrder(intel.item);
+          if (PRODUCTS.includes(intel.item)) return genProductOrder(intel.item);
+        }
+        return Math.random() < 0.5 ? genRawOrder() : genProductOrder();
+      }
+      function genResourceCard() {
+        if (Math.random() < 0.3) return genProductPurchaseCard();
+        const num = rand(1, 3);
+        const resources = [];
+        const available = Object.keys(RESOURCE_PROBS);
+        const probs = Object.values(RESOURCE_PROBS);
+        const port = choice(PORTS);
+        for (let i = 0; i < num; i++) {
+          if (!available.length) break;
+          let r = Math.random(),
+            acc = 0,
+            chosen = available[0];
+          for (let j = 0; j < available.length; j++) {
+            acc += probs[j];
+            if (r <= acc) {
+              chosen = available[j];
+              break;
+            }
+          }
+          const idx = available.indexOf(chosen);
+          available.splice(idx, 1);
+          probs.splice(idx, 1);
+          const qty = rand(1, 3);
+          const [min, max] = COMMODITIES[chosen].basePrice;
+          const base = rand(min, max);
+          const price = COMMODITIES[chosen].ports.includes(port)
+            ? base - 1
+            : base + 1;
+          resources.push({ type: chosen, quantity: qty, price });
+        }
+        const total = resources.reduce((s, r) => s + r.quantity * r.price, 0);
+        return { port, resources, totalCost: total, isProductCard: false };
+      }
+      function genProductPurchaseCard() {
+        const product = choice(PRODUCTS);
+        const qty = rand(1, 2);
+        const port = choice(PORTS);
+        const recipe = RECIPES[product];
+        let matCost = 0;
+        const details = [];
+        for (const [m, a] of Object.entries(recipe.materials)) {
+          const avg =
+            (COMMODITIES[m].basePrice[0] + COMMODITIES[m].basePrice[1]) / 2;
+          matCost += avg * a;
+          details.push(`${m}×${a}`);
+        }
+        const markup = 1.4 + Math.random() * 0.4;
+        let unitPrice = Math.floor(matCost * markup);
+        const [min, max] = PRODUCT_PRICES[product];
+        unitPrice = Math.max(min, Math.min(unitPrice, max));
+        return {
+          port,
+          resources: [
+            {
+              type: product,
+              quantity: qty,
+              price: unitPrice,
+              materialCost: matCost,
+              materialDetails: details.join(" + "),
+            },
+          ],
+          totalCost: unitPrice * qty,
+          isProductCard: true,
+        };
+      }
+
+      function applyBoon(boon) {
+        game.modifierFlags = boon.modifiers;
+        if (boon.modifiers.instant_gold) {
+          game.money += boon.modifiers.instant_gold;
+          log(`💰 Boon applied: Gained ${boon.modifiers.instant_gold} Gold!`);
+        }
+        render();
+        saveGameToServer();
+      }
+      function purchaseCard(card) {
+        if (game.purchasedCards.has(card.id)) return;
+        const cost = getCardFinalCost(card);
+        if (game.money < cost) {
+          log(
+            `❌ Insufficient funds! Need ${cost} Gold, Have ${game.money} Gold`,
+          );
+          return;
+        }
+        game.money -= cost;
+        game.roundCosts += cost;
+        game.totalCosts += cost;
+        for (const r of card.resources) game.inventory[r.type] += r.quantity;
+        game.purchasedCards.add(card.id);
+        game.purchaseCount++;
+        if (card.isProductCard) {
+          const r = card.resources[0];
+          log(
+            `🛒 Bought Product at ${card.port}: ${ICONS[r.type]}${r.type}×${r.quantity} (@${r.price} Gold/item, Mat Cost ${r.materialCost} Gold), Total ${cost} Gold`,
+          );
+          log("   💡 Tip: VAT applies when selling finished products");
+        } else {
+          const txt = card.resources
+            .map(
+              (r) =>
+                `${ICONS[r.type]}${r.type}×${r.quantity}(${r.price} Gold/item)`,
+            )
+            .join(" + ");
+          log(`🛒 Bought at ${card.port}: ${txt}, Total ${cost} Gold`);
+          if (cost < card.totalCost)
+            log(
+              `   ✨ Boon Discount Applied! Saved ${card.totalCost - cost} Gold`,
+            );
+        }
+        log(`📊 Purchased ${game.purchaseCount} cargo batches`);
+        triggerJuice();
+        render();
+        saveGameToServer();
+      }
+      function completeOrder(order) {
+        if (game.completedOrders.has(order.id)) return;
+        for (const r of order.resources) {
+          if ((game.inventory[r.type] || 0) < r.required) {
+            log(`❌ Inventory short! Need ${r.type}×${r.required}`);
+            return;
+          }
+        }
+        const hasSilk = order.resources.some((r) =>
+          ["Silk", "Brocade", "Sachet", "Cotton Clothes"].includes(r.type),
+        );
+        let transport = calcTransportCost(order.totalItems, hasSilk);
+        for (const r of order.resources) game.inventory[r.type] -= r.required;
+        let reward = order.reward;
+        let totalVat = 0;
+        if (order.isProductOrder) {
+          const product = order.resources[0].type;
+          const unitVat = calcVAT(
+            product,
+            reward / order.resources[0].required,
+          );
+          totalVat = unitVat * order.resources[0].required;
+          reward -= totalVat;
+          game.vatPaid += totalVat;
+          log(`🧾 Product Sales VAT: ${totalVat} Gold`);
+        }
+        game.money -= transport;
+        game.roundCosts += transport;
+        game.totalCosts += transport;
+        const origTransport = transport;
+        if (hasModule("silk_monopoly") && hasSilk) {
+          reward = Math.floor(reward * 1.2);
+          log("👘 Silk Monopoly: +20% Reward!");
+        }
+        if (hasModule("salvage_crane") && Math.random() < 0.3) {
+          game.money += transport;
+          log(`♻️ Salvage Crane: Refunded ${transport} Gold transport!`);
+          transport = 0;
+        }
+        if (hasModule("tax_evasion") && Math.random() < 0.15) {
+          game.money -= 20;
+          log("🚨 AUDIT! Tax Evasion Ledger triggered. Lost 20 Gold!");
+        }
+        if (transport !== origTransport) {
+          const diff = origTransport - transport;
+          game.money += diff;
+          game.roundCosts -= diff;
+          game.totalCosts -= diff;
+        }
+        game.money += reward;
+        game.roundRevenue += reward;
+        game.totalRevenue += reward;
+        game.score += Math.floor(reward - transport);
+        game.completedOrders.add(order.id);
+        game.orderCount++;
+        const txt = order.resources
+          .map((r) => `${ICONS[r.type]}${r.type}×${r.required}`)
+          .join(" + ");
+        log(`📦 Completed Order at ${order.demandPort}: ${txt}`);
+        log(
+          `   💰 Reward: ${reward} Gold - ⚓ Freight: ${transport} Gold = 📊 Net Profit: ${reward - transport} Gold`,
+        );
+        log(`📊 Completed ${game.orderCount} transactions`);
+        triggerJuice();
+        render();
+        saveGameToServer();
+      }
+      function hireWorker(type) {
+        const wage = getHireCost(type);
+        if (game.money < wage) {
+          log("❌ Insufficient funds to hire workers!");
+          return;
+        }
+        const names = {
+          weaver: "Weaver",
+          master: "Master Weaver",
+          sachet_maker: "Sachet Maker",
+        };
+        const icons = { weaver: "👩‍🔧", master: "👩‍🎨", sachet_maker: "🌸" };
+        const list =
+          type === "weaver"
+            ? game.weavers
+            : type === "master"
+              ? game.masterWeavers
+              : game.sachetMakers;
+        list.push({
+          task: null,
+          progress: 0,
+          producedCount: 0,
+          isSkilled: false,
+        });
+        log(
+          `${icons[type]} Hired a ${names[type]}! Wage: ${WAGES[type]} Gold / Round (paid at round end)`,
+        );
+        triggerJuice();
+        render();
+        saveGameToServer();
+      }
+      function fireWorker(type, idx) {
+        const list =
+          type === "weaver"
+            ? game.weavers
+            : type === "master"
+              ? game.masterWeavers
+              : game.sachetMakers;
+        const wage = WAGES[type];
+        const names = {
+          weaver: "Weaver",
+          master: "Master Weaver",
+          sachet_maker: "Sachet Maker",
+        };
+        if (idx < 0 || idx >= list.length) return;
+        if (game.money < wage) {
+          log(
+            `❌ Insufficient funds for ${names[type]}'s severance: ${wage} Gold`,
+          );
+          return;
+        }
+        game.money -= wage;
+        const worker = list.splice(idx, 1)[0];
+        log(`💔 Dismissed a ${names[type]}. Severance: ${wage} Gold`);
+        if (worker.task) log(`  This worker was making: ${worker.task}`);
+        render();
+        saveGameToServer();
+      }
+      function assignTask(type, task) {
+        const list =
+          type === "weaver"
+            ? game.weavers
+            : type === "master"
+              ? game.masterWeavers
+              : game.sachetMakers;
+        const recipe = RECIPES[task];
+        for (const worker of list) {
+          if (worker.task === null) {
+            let can = true;
+            for (const [m, a] of Object.entries(recipe.materials))
+              if ((game.inventory[m] || 0) < a) {
+                can = false;
+                break;
+              }
+            if (!can) {
+              log(`❌ Material shortage to produce ${task}!`);
+              return;
+            }
+            for (const [m, a] of Object.entries(recipe.materials))
+              game.inventory[m] -= a;
+            worker.task = task;
+            worker.progress = 0;
+            const matTxt = Object.entries(recipe.materials)
+              .map(([m, a]) => `${ICONS[m]}${m}×${a}`)
+              .join(" + ");
+            log(`📋 Assigned: Produce ${ICONS[task]}${task} (Req: ${matTxt})`);
+            render();
+            saveGameToServer();
+            return;
+          }
+        }
+        log("❌ All workers are already assigned tasks!");
+      }
+      function processProduction() {
+        const bonus = game.modifierFlags.worker_bonus_production || 0;
+        const allLists = [
+          { list: game.weavers, name: "Weaver", type: "weaver" },
+          { list: game.masterWeavers, name: "Master", type: "master" },
+          { list: game.sachetMakers, name: "Maker", type: "sachet_maker" },
+        ];
+        for (const { list, name, type } of allLists) {
+          for (const w of list) {
+            if (w.task) {
+              let base = w.isSkilled ? 2 : 1;
+              let amt = base + bonus;
+              if (hasModule("artisans_workshop")) amt += 1;
+              game.inventory[w.task] = (game.inventory[w.task] || 0) + amt;
+              w.producedCount = (w.producedCount || 0) + amt;
+              if (amt > base)
+                log(
+                  `✅ Skilled ${name} finished ${amt}× ${ICONS[w.task]}${w.task}! (Boon Bonus)`,
+                );
+              else if (w.isSkilled)
+                log(
+                  `✅ Skilled ${name} finished 2× ${ICONS[w.task]}${w.task}!`,
+                );
+              else log(`✅ ${name} finished ${ICONS[w.task]}${w.task}!`);
+              if (w.producedCount >= 2 && !w.isSkilled) {
+                w.isSkilled = true;
+                log(`⭐ ${name} Promotion! Can now produce 2 items per round!`);
+              }
+              w.task = null;
+              w.progress = 0;
+            }
+          }
+        }
+      }
+      function payWages() {
+        let total = 0;
+        const countWorkers = (list, type) => {
+          let w = 0;
+          for (const _ of list) {
+            let wage = WAGES[type];
+            if (hasModule("artisans_workshop")) wage = Math.floor(wage * 1.2);
+            w += wage;
+          }
+          return w;
+        };
+        const ww = countWorkers(game.weavers, "weaver");
+        const mw = countWorkers(game.masterWeavers, "master");
+        const sw = countWorkers(game.sachetMakers, "sachet_maker");
+        total = ww + mw + sw;
+        if (total === 0) return true;
+        if (game.money >= total) {
+          game.money -= total;
+          game.workerWages += total;
+          game.roundCosts += total;
+          if (ww > 0)
+            log(`💰 Paid wages for ${game.weavers.length} Weavers: ${ww} Gold`);
+          if (mw > 0)
+            log(
+              `💰 Paid wages for ${game.masterWeavers.length} Masters: ${mw} Gold`,
+            );
+          if (sw > 0)
+            log(
+              `💰 Paid wages for ${game.sachetMakers.length} Makers: ${sw} Gold`,
+            );
+          return true;
+        }
+        log(
+          `⚠️ Insufficient funds! Needed: ${total} Gold, Have: ${game.money} Gold`,
+        );
+        log("💥 Could not pay wages, workers strike...");
+        log("💥 Reputation collapsed, forced bankruptcy!");
+        return "bankruptcy";
+      }
+      function payMaintenance() {
+        const cost = game.fixedCost + game.maintenancePenalty;
+        if (game.money >= cost) {
+          game.money -= cost;
+          game.maintenanceCosts += cost;
+          game.roundCosts += cost;
+          game.totalCosts += cost;
+          log(`💸 Paid Ship Maintenance Fee: ${cost} Gold`);
+          return true;
+        }
+        if (game.money > 0) {
+          const paid = game.money;
+          game.money = 0;
+          game.maintenanceCosts += paid;
+          game.roundCosts += paid;
+          game.totalCosts += paid;
+          log(`⚠️ Forced payment of ${paid} Gold (Needed ${cost} Gold)`);
+          log("⚠️ Funds depleted! Cannot continue sailing...");
+          return "bankruptcy";
+        }
+        return "bankruptcy";
+      }
+      function endRound() {
+        log(`\n📊=== Round ${game.currentRound} Settlement ===`);
+        log(`💰 Revenue this round: ${game.roundRevenue} Gold`);
+        const totalCost =
+          game.roundCosts + game.maintenanceCosts + game.workerWages;
+        log(`💸 Total Cost this round: ${totalCost} Gold`);
+        log(`   🔧 Maintenance: ${game.maintenanceCosts} Gold`);
+        log(`   📦 Materials: ${game.materialCosts} Gold`);
+        log(`   👥 Wages: ${game.workerWages} Gold`);
+        const preTax = game.roundRevenue - totalCost;
+        log(`📈 Pre-tax Profit: ${preTax} Gold`);
+        const tax = calcIncomeTax(preTax);
+        if (tax > 0) {
+          game.money -= tax;
+          game.incomeTaxPaid += tax;
+          const rate = (game.modifierFlags.income_tax_override || 0.1) * 100;
+          log(`🏛️ Income Tax Paid (${rate.toFixed(0)}%): ${tax} Gold`);
+        } else log("🏛️ No profit, no income tax due");
+        if (game.vatPaid > 0)
+          log(`🧾 VAT Paid this round: ${game.vatPaid} Gold`);
+
+        game.modifierFlags = {};
+        game.phase2DemandTags = [];
+        game.revealedIntel = [];
+        game.intelOrderUsed = false;
+        game.roundRevenue = 0;
+        game.roundCosts = 0;
+        game.maintenanceCosts = 0;
+        game.materialCosts = 0;
+        game.workerWages = 0;
+        game.currentRound++;
+        if (game.currentRound > game.maxRounds) {
+          endGame();
+          return;
+        }
+        log(`\n🔄=== Preparing for Round ${game.currentRound} ===`);
+        game.phase = 0;
+        game.purchaseCount = 0;
+        game.orderCount = 0;
+        game.resourceCards = [];
+        game.customerCards = [];
+        game.purchasedCards.clear();
+        game.completedOrders.clear();
+        startBoonDrafting();
+        saveGameToServer();
+      }
+      function purchaseIntel() {
+        if (!game.phase2DemandTags.length) {
+          log("🔮 The Broker has no more whispers...");
+          render();
+          return;
+        }
+        if (game.money < game.intelCost) {
+          log(`❌ Need ${game.intelCost} Gold for a rumor`);
+          render();
+          return;
+        }
+        const count = hasModule("brokers_network") ? 2 : 1;
+        for (let i = 0; i < count; i++) {
+          if (!game.phase2DemandTags.length) break;
+          const item = choice(game.phase2DemandTags);
+          game.phase2DemandTags.splice(game.phase2DemandTags.indexOf(item), 1);
+          const port = choice(PORTS);
+          game.revealedIntel.push({ item, port });
+          log(
+            `🗣️ Broker's Whisper: 'Word from ${port}: High demand for ${item}!'`,
+          );
+          game.money -= game.intelCost;
+        }
+        render();
+        saveGameToServer();
+      }
+      function upgradeShip() {
+        if (game.shipLevel >= 3) return;
+        const cost =
+          game.shipUpgradeCost[game.shipLevel] + game.shipUpgradePenalty;
+        if (game.money < cost) {
+          alert(`Need ${cost} Gold`);
+          return;
+        }
+        game.money -= cost;
+        game.shipLevel++;
+        log(
+          `🎉 Ship Upgraded to Level ${game.shipLevel}! +1 Module Slot, +5 Discount`,
+        );
+        triggerJuice();
+        render();
+        saveGameToServer();
+      }
+      function equipModule(mod, swapIdx = null) {
+        if (swapIdx !== null) {
+          const old = game.equippedModules[swapIdx];
+          if (old.id === "bulk_hauler") game.shipUpgradePenalty -= 15;
+          if (old.id === "overdrive_engine") game.maintenancePenalty -= 10;
+          if (old.id === "brokers_network") game.intelCost = 5;
+          game.equippedModules[swapIdx] = mod;
+          log(`🔄 Swapped ${old.name} for ${mod.name}!`);
+        } else {
+          if (game.equippedModules.length < game.shipLevel) {
+            game.equippedModules.push(mod);
+            log(`✅ Installed ${mod.name}!`);
+          } else {
+            log("❌ No empty slots! Must swap.");
+            return;
+          }
+        }
+        if (mod.id === "bulk_hauler") game.shipUpgradePenalty += 15;
+        if (mod.id === "overdrive_engine") game.maintenancePenalty += 10;
+        if (mod.id === "brokers_network") game.intelCost = 2;
+        triggerJuice();
+        render();
+        saveGameToServer();
+      }
+
+      function startBoonDrafting() {
+        game.phase = 5;
+        log("\n🧭=== The Navigator's Compass ===");
+        log("Choose a Boon to bend the rules of the upcoming voyage...");
+        render();
+      }
+      function selectBoon(boon) {
+        log(`🧭 Boon Locked In: ${boon.icon} ${boon.name}`);
+        applyBoon(boon);
+        startPhase1();
+      }
+      function selectBoonById(id) {
+        const boon = BOONS.find((b) => b.id === id);
+        if (boon) selectBoon(boon);
+      }
+      function showWelcome() {
+        game.phase = 0;
+        log("=".repeat(50));
+        log("⚓ Welcome to PortMasters!");
+        log("🚢 Sail across ports, build your business empire!");
+        log("👥 Hire artisans to craft valuable goods for higher profits!");
+        log("=".repeat(50));
+        render();
+      }
+      function startPhase1() {
+        game.phase = 1;
+        game.purchaseCount = 0;
+        game.purchasedCards.clear();
+        game.phase2DemandTags = [];
+        const allItems = [...RESOURCES, ...PRODUCTS];
+        for (let i = 0; i < 5; i++) {
+          let t = choice(allItems);
+          if (!game.phase2DemandTags.includes(t)) game.phase2DemandTags.push(t);
+        }
+        game.revealedIntel = [];
+        game.intelOrderUsed = false;
+        log(`\n⚓=== Round ${game.currentRound} - Phase 1: Port Purchase ===`);
+        log(`💰 Current Funds: ${game.money} Gold`);
+        game.resourceCards = [];
+        for (let i = 0; i < 5; i++) {
+          const c = genResourceCard();
+          c.id = i;
+          game.resourceCards.push(c);
+        }
+        render();
+        saveGameToServer();
+      }
+      function completePhase1() {
+        if (game.purchaseCount === 0) log("⏭️ Purchasing skipped");
+        else log(`✅ Purchasing ended, bought ${game.purchaseCount} batches`);
+        game.phase = "worker_mgmt";
+        render();
+        saveGameToServer();
+      }
+      function startPhase2() {
+        game.phase = 2;
+        game.orderCount = 0;
+        game.completedOrders.clear();
+        log(
+          `\n🤝=== Round ${game.currentRound} - Phase 2: Trade Transaction ===`,
+        );
+        game.customerCards = [];
+        for (let i = 0; i < 5; i++) {
+          const o = genMixedOrder();
+          o.id = i;
+          game.customerCards.push(o);
+        }
+        render();
+        saveGameToServer();
+      }
+      function completePhase2() {
+        if (game.orderCount === 0) log("⏭️ Trading skipped");
+        else log(`✅ Trading ended, completed ${game.orderCount} trades`);
+        startPhase3();
+      }
+      function startPhase3() {
+        game.phase = 3;
+        log("\n👥=== Processing Worker Production ===");
+        processProduction();
+        log("\n💰=== Paying Worker Wages ===");
+        const wageResult = payWages();
+        if (wageResult === "bankruptcy") {
+          log("⚠️ Bankruptcy due to inability to pay wages!");
+          game.gameOver = true;
+          game.phase = "bankruptcy";
+          render();
+          return;
+        }
+        log(
+          `\n🔧=== Round ${game.currentRound} - Phase 3: Ship Maintenance ===`,
+        );
+        if (game.money <= 0) {
+          log("⚠️ Funds at 0, cannot pay maintenance!");
+          game.gameOver = true;
+          game.phase = "bankruptcy";
+          render();
+          return;
+        }
+        render();
+        saveGameToServer();
+      }
+      function doMaintenance() {
+        const r = payMaintenance();
+        if (r === "bankruptcy") {
+          game.gameOver = true;
+          game.phase = "bankruptcy";
+          render();
+          return;
+        }
+        startPhase4();
+      }
+      function startPhase4() {
+        game.phase = 4;
+        log(
+          `\n🚢=== Round ${game.currentRound} - Phase 4: Shipyard & Modules ===`,
+        );
+        render();
+        saveGameToServer();
+      }
+      function skipUpgrade() {
+        log("⏭️ Skipped Shipyard Actions");
+        endRound();
+      }
+      function endGame() {
+        game.gameOver = true;
+        game.phase = "endgame";
+        log("\n" + "=".repeat(50));
+        log("🎮 PortMasters - Game Over!");
+        log(`💰 Final Funds: ${game.money} Gold`);
+        log(`🏆 Final Reputation: ${game.score}`);
+        log(`🧾 Total Taxes Paid: ${game.vatPaid + game.incomeTaxPaid} Gold`);
+        let rating;
+        if (game.score >= 300) rating = "👑 King of Silk Road";
+        else if (game.score >= 200) rating = "🏆 Maritime Tycoon";
+        else if (game.score >= 100) rating = "⭐ Successful Merchant";
+        else if (game.score >= 50) rating = "👍 Qualified Trader";
+        else rating = "🌊 Novice Merchant";
+        log(`📈 Rank: ${rating}`);
+        log("=".repeat(50));
+        render();
+        saveGameToServer();
+      }
+      function restartGame() {
+        if (!confirm("Confirm restarting the maritime journey?")) return;
+        Object.assign(game, {
+          inventory: {
+            Hemp: 8,
+            Silk: 5,
+            Tea: 3,
+            "Linen Clothes": 0,
+            "Cotton Clothes": 0,
+            Brocade: 0,
+            Sachet: 0,
+          },
+          money: 100,
+          score: 0,
+          currentRound: 1,
+          totalRevenue: 0,
+          totalCosts: 0,
+          materialCosts: 0,
+          workerWages: 0,
+          maintenanceCosts: 0,
+          vatPaid: 0,
+          incomeTaxPaid: 0,
+          roundRevenue: 0,
+          roundCosts: 0,
+          weavers: [],
+          masterWeavers: [],
+          sachetMakers: [],
+          shipLevel: 0,
+          shipUpgradePenalty: 0,
+          maintenancePenalty: 0,
+          phase: 0,
+          gameOver: false,
+          purchaseCount: 0,
+          orderCount: 0,
+          resourceCards: [],
+          customerCards: [],
+          purchasedCards: new Set(),
+          completedOrders: new Set(),
+          modifierFlags: {},
+          phase2DemandTags: [],
+          revealedIntel: [],
+          intelOrderUsed: false,
+          equippedModules: [],
+          intelCost: 5,
+        });
+        logs.length = 0;
+        showWelcome();
+        saveGameToServer();
+      }
+      function nextPhase() {
+        if (game.phase === 1) completePhase1();
+        else if (game.phase === "worker_mgmt") startPhase2();
+        else if (game.phase === 2) completePhase2();
+        else if (game.phase === 3) doMaintenance();
+        else if (game.phase === 4) skipUpgrade();
+      }
+
+      function saveGame() {
+        saveGameToServer();
+        toast("💾 Game Saved!");
+      }
+      function loadGame() {
+        return loadServerGameState();
+      }
+
+      function triggerJuice() {
+        playSound();
+        shakeWindow();
+        particleBurst();
+      }
+      function playSound() {
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.frequency.setValueAtTime(440, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(
+            880,
+            ctx.currentTime + 0.1,
+          );
+          gain.gain.setValueAtTime(0.3, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.3);
+        } catch (e) {}
+      }
+      function shakeWindow() {
+        const el = document.getElementById("gameArea");
+        if (!el) return;
+        el.classList.add("shake");
+        setTimeout(() => el.classList.remove("shake"), 300);
+      }
+      function particleBurst() {
+        const canvas = document.getElementById("particles-canvas");
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        const ctx = canvas.getContext("2d");
+        const cx = canvas.width / 2,
+          cy = canvas.height / 2;
+        const particles = [];
+        const colors = ["#FFD700", "#FFA500", "#4CAF50", "#2E5AA7", "#FFFFFF"];
+        const emojis = ["✨", "⭐", "💫", "🪙", "🎋"];
+        for (let i = 0; i < 35; i++) {
+          particles.push({
+            x: cx,
+            y: cy,
+            vx: (Math.random() - 0.5) * 16,
+            vy: (Math.random() - 0.5) * 16 - 4,
+            r: 5 + Math.random() * 10,
+            color: choice(colors),
+            life: 1,
+          });
+        }
+        const texts = [];
+        for (let i = 0; i < 5; i++) {
+          texts.push({
+            x: cx + (Math.random() - 0.5) * 80,
+            y: cy + (Math.random() - 0.5) * 80,
+            vx: (Math.random() - 0.5) * 6,
+            vy: -2 - Math.random() * 3,
+            emoji: choice(emojis),
+            life: 1,
+          });
+        }
+        let step = 0;
+        const animate = () => {
+          if (step++ > 30) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            return;
+          }
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          for (const p of particles) {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.5;
+            p.life -= 0.03;
+            if (p.life > 0) {
+              ctx.globalAlpha = p.life;
+              ctx.fillStyle = p.color;
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+          for (const t of texts) {
+            t.x += t.vx;
+            t.y += t.vy;
+            t.life -= 0.03;
+            if (t.life > 0) {
+              ctx.globalAlpha = t.life;
+              ctx.font = "24px sans-serif";
+              ctx.fillText(t.emoji, t.x, t.y);
+            }
+          }
+          ctx.globalAlpha = 1;
+          requestAnimationFrame(animate);
+        };
+        animate();
+      }
+
+      function render() {
+        try {
+          renderStatus();
+          renderPhase();
+          renderControls();
+          renderLog();
+          if (social.me) {
+            social.me.gold = game.money;
+            social.me.score = game.score;
+            social.me.current_round = game.currentRound;
+            social.me.phase = String(game.phase);
+            updateMeStats();
+          }
+        } catch (err) {
+          console.error("🚨 Render crash:", err);
+          const p = document.getElementById("phase-panel");
+          if (p)
+            p.innerHTML = `<div style="padding:20px;color:#FF5252;background:#2A0000;border:2px solid #FF5252;border-radius:8px;margin:20px;font-family:monospace">
+      <h3>⚠️ ENGINE EXCEPTION</h3><p>${err.message}</p>
+      <button class="btn btn-danger" onclick="render()">🔄 Recover</button></div>`;
+        }
+      }
+
+      function renderStatus() {
+        const p = document.getElementById("status-panel");
+        const discount = game.shipLevel * 5;
+        let html = `
+    <div class="status-section">
+      <h3>📊 Captain's Log</h3>
+      <div class="stat-row"><span>🌊 Voyage</span><span class="stat-value">${game.currentRound}/${game.maxRounds}</span></div>
+      <div class="stat-row"><span>💰 Funds</span><span class="stat-money">${game.money} Gold</span></div>
+      <div class="stat-row"><span>🏆 Reputation</span><span class="stat-score">${game.score}</span></div>
+    </div>
+    <div class="status-section">
+      <h3>🚢 Vessel Status</h3>
+      <div class="stat-row"><span>Class</span><span class="stat-value">Level ${game.shipLevel}</span></div>
+      <div class="stat-row"><span>Freight</span><span style="font-size:10px">max(5, n×2 - ${discount})</span></div>
+      <div class="stat-row"><span>Modules</span><span class="stat-value">${game.equippedModules.length}/${game.shipLevel}</span></div>
+      ${game.equippedModules.map((m) => `<div class="stat-row" style="font-size:10px"><span>${m.icon} ${m.name}</span></div>`).join("")}
+    </div>
+    <div class="status-section">
+      <h3>📦 Cargo Hold</h3>
+      <div class="inv-section-title">━━ Raw Materials ━━</div>
+      ${RESOURCES.map((r) => `<div class="inv-item"><span class="icon">${ICONS[r]}</span><span class="name" style="color:${COLORS[r]}">${r}</span><span class="count" style="color:${COLORS[r]}">${game.inventory[r] || 0}</span></div>`).join("")}
+      <div class="inv-section-title">━━ Finished Goods ━━</div>
+      ${PRODUCTS.map((r) => `<div class="inv-item"><span class="icon">${ICONS[r]}</span><span class="name" style="color:${COLORS[r]}">${r}</span><span class="count" style="color:${COLORS[r]}">${game.inventory[r] || 0}</span></div>`).join("")}
+      ${
+        game.weavers.length ||
+        game.masterWeavers.length ||
+        game.sachetMakers.length
+          ? `
+        <div class="inv-section-title">━━ Artisans ━━</div>
+        <div class="inv-item"><span class="name">👩‍🔧 Weavers</span><span class="count">${game.weavers.length}</span></div>
+        <div class="inv-item"><span class="name">👩‍🎨 Masters</span><span class="count">${game.masterWeavers.length}</span></div>
+        <div class="inv-item"><span class="name">🌸 Makers</span><span class="count">${game.sachetMakers.length}</span></div>
+      `
+          : ""
+      }
+    </div>`;
+        if (![0, 5, "endgame", "bankruptcy"].includes(game.phase)) {
+          const _ww =
+            game.weavers.length *
+            (hasModule("artisans_workshop")
+              ? Math.floor(WAGES.weaver * 1.2)
+              : WAGES.weaver);
+          const _mw =
+            game.masterWeavers.length *
+            (hasModule("artisans_workshop")
+              ? Math.floor(WAGES.master * 1.2)
+              : WAGES.master);
+          const _sw =
+            game.sachetMakers.length *
+            (hasModule("artisans_workshop")
+              ? Math.floor(WAGES.sachet_maker * 1.2)
+              : WAGES.sachet_maker);
+          const _pendWages = _ww + _mw + _sw;
+          const _pendMaint = game.fixedCost + game.maintenancePenalty;
+          const _pendTotal = _pendWages + _pendMaint;
+          const _safe = game.money >= _pendTotal;
+          const _nW =
+            game.weavers.length +
+            game.masterWeavers.length +
+            game.sachetMakers.length;
+          html += `
+    <div class="status-section" style="border-color:${_safe ? "#2E5AA7" : "#FF5252"}">
+      <h3>⚠️ Round-End Obligations</h3>
+      <div class="stat-row"><span>🔧 Maintenance</span><span class="stat-value">${_pendMaint} Gold</span></div>
+      <div class="stat-row"><span>👥 Wages${_nW > 0 ? " (" + _nW + " workers)" : ""}</span><span class="stat-value">${_nW > 0 ? _pendWages + " Gold" : "—"}</span></div>
+      ${_ww > 0 ? `<div class="stat-row" style="font-size:10px;padding-left:10px"><span>↳ ${game.weavers.length}× Weaver</span><span>${_ww}g</span></div>` : ""}
+      ${_mw > 0 ? `<div class="stat-row" style="font-size:10px;padding-left:10px"><span>↳ ${game.masterWeavers.length}× Master</span><span>${_mw}g</span></div>` : ""}
+      ${_sw > 0 ? `<div class="stat-row" style="font-size:10px;padding-left:10px"><span>↳ ${game.sachetMakers.length}× Maker</span><span>${_sw}g</span></div>` : ""}
+      <div class="stat-row" style="border-top:1px solid ${_safe ? "#2E5AA7" : "#FF5252"};margin-top:4px;padding-top:4px">
+        <span><strong>💸 Total Due</strong></span>
+        <span style="font-weight:bold;color:${_safe ? "#4CAF50" : "#FF5252"}">${_pendTotal} Gold</span>
+      </div>
+      ${!_safe ? '<div style="background:#FF5252;color:white;border-radius:4px;padding:3px 6px;font-size:10px;margin-top:4px;text-align:center">🚨 Risk: Funds may fall short at round end!</div>' : '<div style="font-size:10px;color:#4CAF50;text-align:center;margin-top:4px">✅ Funds sufficient for round end</div>'}
+    </div>`;
+        }
+        p.innerHTML = html;
+      }
+
+      function renderPhase() {
+        const p = document.getElementById("phase-panel");
+        if (game.phase === 0) renderWelcome(p);
+        else if (game.phase === 5) renderBoonDraft(p);
+        else if (game.phase === 1) renderPurchase(p);
+        else if (game.phase === "worker_mgmt") renderWorkerMgmt(p);
+        else if (game.phase === 2) renderOrders(p);
+        else if (game.phase === 3) renderMaintenance(p);
+        else if (game.phase === 4) renderShipyard(p);
+        else if (game.phase === "bankruptcy") renderBankruptcy(p);
+        else if (game.phase === "endgame") renderEndgame(p);
+        else if (game.phase === "module_draft") renderModuleDraft(p);
+        else if (game.phase === "module_swap") renderModuleSwap(p);
+      }
+
+      // EXACT ORIGINAL WELCOME LAYOUT RESTORED
+      function renderWelcome(p) {
+        p.innerHTML = `
+    <div class="center-block">
+      <div class="hero-title">⚓ PortMasters 🚢</div>
+      <div class="subtitle-text">🌊 Eight Voyages await, become the Sea Master!</div>
+      <div style="text-align:center; margin: 20px 0">
+        <button class="btn btn-success btn-xl" onclick="startBoonDrafting()">🚢 Set Sail</button>
+        <br><button class="btn" onclick="showTutorial(0)" style="margin-top:8px;font-size:13px;padding:8px 22px">📖 New Player Tutorial</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px auto;text-align:left;max-width:700px">
+        <div style="background:#E8F5E9;border-left:4px solid #4CAF50;border-radius:4px;padding:10px">
+          <div style="font-weight:bold;color:#2d5a2d;margin-bottom:4px">🚀 Starting Resources</div>
+          <div style="font-size:12px">📦 Hemp×8, Silk×5, Tea×3</div>
+          <div style="font-size:12px">💰 100 Gold starting funds</div>
+        </div>
+        <div style="background:#FFF3CD;border-left:4px solid #FFC107;border-radius:4px;padding:10px">
+          <div style="font-weight:bold;color:#856404;margin-bottom:4px">⏱️ Production Delay</div>
+          <div style="font-size:12px">Assign task now → item arrives at Phase 3</div>
+          <div style="font-size:11px;color:#856404">Workers don't produce instantly!</div>
+        </div>
+        <div style="background:#E3F2FD;border-left:4px solid #2196F3;border-radius:4px;padding:10px">
+          <div style="font-weight:bold;color:#0d47a1;margin-bottom:4px">💸 Round-End Costs</div>
+          <div style="font-size:12px">🔧 Maintenance: 15 Gold (fixed each round)</div>
+          <div style="font-size:12px">👥 Wages deducted at Phase 3, not on hire</div>
+        </div>
+        <div style="background:#FCE4EC;border-left:4px solid #E91E63;border-radius:4px;padding:10px">
+          <div style="font-weight:bold;color:#880e4f;margin-bottom:4px">🧾 Taxes Explained</div>
+          <div style="font-size:12px">VAT: 5% of finished-good profit margin</div>
+          <div style="font-size:12px">Income Tax: 10% of round net profit</div>
+        </div>
+      </div>
+      <div style="max-width:700px;margin:0 auto">
+        <div style="background:#F0F8FF;border:1px solid #2E5AA7;border-radius:6px;padding:10px;margin-bottom:8px;font-size:12px">
+          <strong>🔄 4 Phases per Voyage:</strong> 1️⃣ Buy at Ports → 2️⃣ Fill Trade Orders → 3️⃣ Wages, Production & Maintenance → 4️⃣ Upgrade Ship
+        </div>
+        <div style="background:#FFF8DC;border:1px solid #FFA000;border-radius:6px;padding:10px;margin-bottom:8px;font-size:12px">
+          <strong>💡 New Player Tip:</strong> Rely on raw material orders early. Hire artisans only when you can sustain at least 2 rounds of wages. Always keep funds &gt; Maintenance + All Wages.
+        </div>
+        <div style="display:flex;gap:8px;font-size:11px">
+          <div style="flex:1;background:#F0F8FF;border-radius:4px;padding:8px">🔮 Phase 1 Broker: buy demand rumors to guarantee orders</div>
+          <div style="flex:1;background:#F0F8FF;border-radius:4px;padding:8px">🚢 Phase 4: upgrade ship → freight discounts + module slots</div>
+          <div style="flex:1;background:#F0F8FF;border-radius:4px;padding:8px">⌨️ Ctrl+S save · Ctrl+N next phase · F1 guide</div>
+        </div>
+      </div>
+    </div>`;
+      }
+
+      function renderBoonDraft(p) {
+        const gs = {
+          money: game.money,
+          inventory: game.inventory,
+          weavers: game.weavers,
+          master_weavers: game.masterWeavers,
+          sachet_makers: game.sachetMakers,
+        };
+        const weightFuncs = {
+          silk_wind: () =>
+            (gs.inventory["Silk"] || 0) > 2 || gs.master_weavers.length > 0
+              ? 2.5
+              : 0.8,
+          favorable_tides: () => 1.5,
+          merchant_charm: () => (gs.money > 40 ? 2.0 : 0.5),
+          artisan_inspiration: () =>
+            gs.weavers.length +
+              gs.master_weavers.length +
+              gs.sachet_makers.length >
+            0
+              ? 3.0
+              : 0.0,
+          emergency_loan: () => (gs.money < 30 ? 4.0 : 0.2),
+          tax_shelter: () => 1.5,
+          hemp_monopoly: () =>
+            (gs.inventory["Hemp"] || 0) < 5 || gs.weavers.length > 0
+              ? 2.0
+              : 1.0,
+          master_apprentice: () => 1.5,
+        };
+        const available = BOONS.map((b) => [b, weightFuncs[b.id]()]).filter(
+          ([, w]) => w > 0,
+        );
+        const picks = [];
+        const pool = [...available];
+        for (let i = 0; i < 3; i++) {
+          if (!pool.length) break;
+          picks.push(weightedChoice(pool));
+          pool.splice(
+            pool.findIndex((x) => x[0].id === picks[picks.length - 1].id),
+            1,
+          );
+        }
+        p.innerHTML = `
+    <div class="center-block">
+      <div class="hero-title">🧭 The Navigator's Compass</div>
+      <div class="subtitle-text">Draft a Boon to synergize with your strategy</div>
+      <div class="card-grid">
+        ${picks
+          .map(
+            (b) => `
+          <div class="boon-card">
+            <div class="boon-icon">${b.icon}</div>
+            <div class="boon-name">${b.name}</div>
+            <div class="boon-desc">${b.desc}</div>
+            <button class="btn btn-gold btn-lg" onclick="selectBoonById('${b.id}')">🔒 Lock In Boon</button>
+          </div>
+        `,
+          )
+          .join("")}
+      </div>
+    </div>`;
+      }
+
+      function renderPurchase(p) {
+        p.innerHTML = `
+    <div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px">
+        <h2 style="color:#1A3C8C">⚓ Port Merchant Exchange</h2>
+        <button class="btn btn-gold" onclick="showRumorBoard()">🔮 Broker's Rumor Board</button>
+      </div>
+      <div class="card-grid">
+        ${game.resourceCards
+          .map((c) => {
+            const finalCost = getCardFinalCost(c);
+            const purchased = game.purchasedCards.has(c.id);
+            const canAfford = game.money >= finalCost && !purchased;
+            return `
+            <div class="card">
+              <div class="card-header">📍 ${c.port} [${c.isProductCard ? "Product" : "Raw Material"}]</div>
+              <div class="card-body">
+                ${c.resources
+                  .map(
+                    (r) => `
+                  <div class="resource-row">
+                    <span class="icon">${ICONS[r.type]}</span>
+                    <span class="name" style="color:${COLORS[r.type]}">${r.type}</span>
+                    <span class="qty">×${r.quantity}</span>
+                    <span class="price">Unit: ${r.price}💰</span>
+                  </div>
+                  ${
+                    r.materialCost
+                      ? `
+                    <div style="font-size:10px; color:#888; padding-left:24px">📦 Mat Cost: ${r.materialCost} Gold (${r.materialDetails})</div>
+                    <div style="font-size:10px; color:#FF5252; padding-left:24px">💰 Markup: +${r.price - r.materialCost} Gold (${(((r.price - r.materialCost) / r.materialCost) * 100).toFixed(0)}%)</div>
+                  `
+                      : ""
+                  }
+                `,
+                  )
+                  .join("")}
+                <div class="separator"></div>
+                <div style="color:#FF5252; font-weight:bold; font-size:14px">
+                  💰 Total: ${finalCost} Gold
+                  ${finalCost < c.totalCost ? `<span style="color:#888; font-size:11px">(Was ${c.totalCost})</span>` : ""}
+                </div>
+              </div>
+              <div class="card-footer">
+                <button class="btn ${canAfford ? "btn-success" : "btn-grey"}" style="width:100%"
+                  ${!canAfford ? "disabled" : ""} onclick="purchaseCard(game.resourceCards[${c.id}])">
+                  ${purchased ? "✅ Purchased" : `🛒 Buy (${finalCost}💰)`}
+                </button>
+              </div>
+            </div>`;
+          })
+          .join("")}
+      </div>
+      <div style="text-align:center; margin-top:20px">
+        <button class="btn btn-lg" onclick="completePhase1()">✅ Complete Purchase, Continue</button>
+      </div>
+    </div>`;
+      }
+
+      function renderWorkerMgmt(p) {
+        const weaverCost = getHireCost("weaver");
+        const masterCost = getHireCost("master");
+        const makerCost = getHireCost("sachet_maker");
+        const _ww =
+          game.weavers.length *
+          (hasModule("artisans_workshop")
+            ? Math.floor(WAGES.weaver * 1.2)
+            : WAGES.weaver);
+        const _mw =
+          game.masterWeavers.length *
+          (hasModule("artisans_workshop")
+            ? Math.floor(WAGES.master * 1.2)
+            : WAGES.master);
+        const _sw =
+          game.sachetMakers.length *
+          (hasModule("artisans_workshop")
+            ? Math.floor(WAGES.sachet_maker * 1.2)
+            : WAGES.sachet_maker);
+        const _totalWages = _ww + _mw + _sw;
+        const _nW =
+          game.weavers.length +
+          game.masterWeavers.length +
+          game.sachetMakers.length;
+        p.innerHTML = `
+    <div class="center-block">
+      <div class="hero-title">👥 Artisan Management</div>
+      <div class="subtitle-text">💰 Current Funds: ${game.money} Gold | 📦 See Inventory Below</div>
+
+      <div style="background:#E8F5E9;border:2px solid #4CAF50;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:12px">
+        <strong>⏱️ Production Cycle — What Happens When:</strong>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:6px;text-align:center">
+          <div style="background:#4CAF50;color:white;border-radius:4px;padding:4px 2px;font-size:11px">📋 Now<br><span style="font-size:9px">Assign task<br>consume materials</span></div>
+          <div style="background:#2E5AA7;color:white;border-radius:4px;padding:4px 2px;font-size:11px">🤝 Phase 2<br><span style="font-size:9px">Trade orders</span></div>
+          <div style="background:#FF9800;color:white;border-radius:4px;padding:4px 2px;font-size:11px">✅ Phase 3<br><span style="font-size:9px">Items produced<br>+ wages paid</span></div>
+          <div style="background:#9C27B0;color:white;border-radius:4px;padding:4px 2px;font-size:11px">🚢 Phase 4<br><span style="font-size:9px">Shipyard</span></div>
+        </div>
+      </div>
+
+      <div style="background:#F0F8FF; border:2px solid #2E5AA7; border-radius:8px; padding:16px; margin:16px 0">
+        <h3 style="color:#1A3C8C; text-align:center">📦 Current Inventory</h3>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:10px">
+          <div>
+            <strong style="color:#2E5AA7">Raw Materials:</strong>
+            ${RESOURCES.map((r) => `<div class="inv-item"><span class="icon">${ICONS[r]}</span><span class="name" style="color:${COLORS[r]}">${r}</span><span class="count" style="color:${COLORS[r]}">${game.inventory[r] || 0}</span></div>`).join("")}
+          </div>
+          <div>
+            <strong style="color:#2E5AA7">Finished Goods:</strong>
+            ${PRODUCTS.map((r) => `<div class="inv-item"><span class="icon">${ICONS[r]}</span><span class="name" style="color:${COLORS[r]}">${r}</span><span class="count" style="color:${COLORS[r]}">${game.inventory[r] || 0}</span></div>`).join("")}
+          </div>
+        </div>
+      </div>
+
+      <div class="separator"></div>
+
+      ${
+        _nW > 0
+          ? `
+      <div style="background:#FFF0F0;border:2px solid #FF9800;border-radius:8px;padding:12px 16px;margin:12px 0">
+        <h3 style="color:#b34700;text-align:center;margin-bottom:8px">💰 Pending Payroll — Deducted at Phase 3</h3>
+        <div style="font-size:12px">
+          ${_ww > 0 ? `<div style="display:flex;justify-content:space-between;padding:2px 0"><span>👩‍🔧 ${game.weavers.length}× Weaver @ ${hasModule("artisans_workshop") ? Math.floor(WAGES.weaver * 1.2) : WAGES.weaver}g</span><span style="font-weight:bold">${_ww} Gold</span></div>` : ""}
+          ${_mw > 0 ? `<div style="display:flex;justify-content:space-between;padding:2px 0"><span>👩‍🎨 ${game.masterWeavers.length}× Master @ ${hasModule("artisans_workshop") ? Math.floor(WAGES.master * 1.2) : WAGES.master}g</span><span style="font-weight:bold">${_mw} Gold</span></div>` : ""}
+          ${_sw > 0 ? `<div style="display:flex;justify-content:space-between;padding:2px 0"><span>🌸 ${game.sachetMakers.length}× Maker @ ${hasModule("artisans_workshop") ? Math.floor(WAGES.sachet_maker * 1.2) : WAGES.sachet_maker}g</span><span style="font-weight:bold">${_sw} Gold</span></div>` : ""}
+          <div style="display:flex;justify-content:space-between;border-top:1px solid #FF9800;padding-top:4px;margin-top:4px;font-weight:bold">
+            <span>💸 Total Wages Due</span><span style="color:#FF5252">${_totalWages} Gold</span>
+          </div>
+        </div>
+      </div>
+      `
+          : ""
+      }
+
+      <div style="background:#FFF8DC; border:2px solid #2E5AA7; border-radius:8px; padding:16px; margin:16px 0">
+        <h3 style="color:#1A3C8C; text-align:center">🔨 Hire Workers</h3>
+        <div style="font-size:12px; margin:10px 0">
+          <div><strong>👩‍🔧 Weaver</strong> — Linen Clothes(2 Hemp) or Cotton Clothes(2 Hemp+1 Silk) — <span style="color:#FF9800">${WAGES.weaver} Gold/round</span></div>
+          <div><strong>👩‍🎨 Master Weaver</strong> — Linen, Cotton or Brocade(3 Silk) — <span style="color:#FF9800">${WAGES.master} Gold/round</span></div>
+          <div><strong>🌸 Sachet Maker</strong> — Sachet(1 Silk+2 Tea) — <span style="color:#FF9800">${WAGES.sachet_maker} Gold/round</span></div>
+        </div>
+        <div style="text-align:center; margin-top:10px">
+          <button class="btn btn-success" onclick="hireWorker('weaver')">👩‍🔧 Hire Weaver (${weaverCost}💰/round)</button>
+          <button class="btn" onclick="hireWorker('master')">👩‍🎨 Hire Master (${masterCost}💰/round)</button>
+          <button class="btn btn-warning" onclick="hireWorker('sachet_maker')">🌸 Hire Maker (${makerCost}💰/round)</button>
+        </div>
+      </div>
+
+      ${
+        game.weavers.length ||
+        game.masterWeavers.length ||
+        game.sachetMakers.length
+          ? `
+        <div class="separator"></div>
+        <div style="background:#F0F8FF; border:2px solid #2E5AA7; border-radius:8px; padding:16px; margin:16px 0">
+          <h3 style="color:#1A3C8C; text-align:center">👥 Worker Status & Tasks</h3>
+          ${renderWorkerList("weaver", game.weavers, "Weaver", ["Linen Clothes", "Cotton Clothes"])}
+          ${renderWorkerList("master", game.masterWeavers, "Master", ["Linen Clothes", "Cotton Clothes", "Brocade"])}
+          ${renderWorkerList("sachet_maker", game.sachetMakers, "Maker", ["Sachet"])}
+        </div>
+      `
+          : ""
+      }
+
+      <div style="text-align:center; margin-top:20px">
+        <button class="btn btn-lg" onclick="startPhase2()">✅ Complete Management, Set Sail</button>
+      </div>
+    </div>`;
+      }
+
+      function renderWorkerList(type, list, name, tasks) {
+        if (!list.length) return "";
+        return `
+    <div style="margin:12px 0">
+      <strong style="color:#2E5AA7">${type === "weaver" ? "👩‍🔧" : type === "master" ? "👩‍🎨" : "🌸"} ${name}s: ${list.length}</strong>
+      ${list
+        .map(
+          (w, i) => `
+        <div class="worker-row">
+          <span>${name} ${i + 1}: ${w.task ? `Working on: ${w.task}${w.isSkilled ? " (Skilled)" : ""}` : `Idle${w.isSkilled ? " ⭐ Skilled" : ""}`}</span>
+          <span>
+            ${!w.task ? `<button class="btn btn-danger" style="padding:4px 8px; font-size:11px" onclick="fireWorker('${type}', ${i})">Dismiss (${WAGES[type]}💰)</button>` : ""}
+          </span>
+        </div>
+      `,
+        )
+        .join("")}
+      <div style="margin-top:6px">
+        ${tasks
+          .map((t) => {
+            const recipe = RECIPES[t];
+            const mats = Object.entries(recipe.materials)
+              .map(([m, a]) => `${ICONS[m]}${m}×${a}`)
+              .join("+");
+            return `<button class="btn btn-sm" style="margin:2px; padding:6px 12px; font-size:11px" onclick="assignTask('${type}', '${t}')">Make ${t} (Need ${mats})</button>`;
+          })
+          .join("")}
+      </div>
+    </div>`;
+      }
+
+      function renderOrders(p) {
+        p.innerHTML = `
+    <div>
+      <h2 style="color:#1A3C8C; margin-bottom:16px">🤝 Trade Manifest</h2>
+      <div class="card-grid">
+        ${game.customerCards
+          .map((o) => {
+            const canComplete = o.resources.every(
+              (r) => (game.inventory[r.type] || 0) >= r.required,
+            );
+            const completed = game.completedOrders.has(o.id);
+            const hasSilk = o.resources.some((r) =>
+              ["Silk", "Brocade", "Sachet", "Cotton Clothes"].includes(r.type),
+            );
+            const transport = calcTransportCost(o.totalItems, hasSilk);
+            let netProfit = o.reward - transport;
+            let totalVat = 0;
+            if (o.isProductOrder) {
+              const product = o.resources[0].type;
+              const unitVat = calcVAT(
+                product,
+                o.reward / o.resources[0].required,
+              );
+              totalVat = unitVat * o.resources[0].required;
+              netProfit -= totalVat;
+            }
+            return `
+            <div class="card">
+              <div class="card-header">📍 ${o.demandPort} ${o.isProductOrder ? "Finished Product Demand" : "Raw Material Demand"}</div>
+              <div class="card-body">
+                ${o.resources
+                  .map((r) => {
+                    const has = (game.inventory[r.type] || 0) >= r.required;
+                    return `
+                    <div class="resource-row">
+                      <span style="font-size:14px">${has ? "✅" : "❌"}</span>
+                      <span class="icon">${ICONS[r.type]}</span>
+                      <span class="name" style="color:${COLORS[r.type]}">${r.type}</span>
+                      <span class="qty">×${r.required}</span>
+                      <span class="inv-status" style="color:${has ? "green" : "red"}">Inv: ${game.inventory[r.type] || 0}</span>
+                    </div>`;
+                  })
+                  .join("")}
+                <div style="font-size:11px; color:#FF5252; margin-top:6px">⚓ Freight: ${transport} Gold</div>
+                <div class="${netProfit >= 0 ? "profit-positive" : "profit-negative"}" style="font-size:13px; margin-top:4px">
+                  💰 Reward: ${o.reward} Gold 📊 Net: ${netProfit} Gold
+                </div>
+                ${o.isProductOrder ? `<div style="font-size:10px; color:#666">🧾 Est. VAT: ${totalVat} Gold</div>` : ""}
+              </div>
+              <div class="card-footer">
+                <button class="btn ${canComplete && !completed ? "" : "btn-grey"}" style="width:100%"
+                  ${!canComplete || completed ? "disabled" : ""} onclick="completeOrder(game.customerCards[${o.id}])">
+                  ${completed ? "✅ Completed" : `🤝 Trade (Net ${netProfit}💰)`}
+                </button>
+              </div>
+            </div>`;
+          })
+          .join("")}
+      </div>
+      <div style="text-align:center; margin-top:20px">
+        <button class="btn btn-lg" onclick="completePhase2()">✅ Complete Trades, Continue</button>
+      </div>
+    </div>`;
+      }
+
+      function renderMaintenance(p) {
+        const cost = game.fixedCost + game.maintenancePenalty;
+        const canAfford = game.money >= cost;
+        const balanceAfter = game.money - cost;
+        const nWorkers =
+          game.weavers.length +
+          game.masterWeavers.length +
+          game.sachetMakers.length;
+        p.innerHTML = `
+    <div class="center-block">
+      <div class="hero-title">🔧 Phase 3 — Round Settlement</div>
+      <div style="background:#E8F5E9;border:2px solid #4CAF50;border-radius:8px;padding:14px;margin:14px 0">
+        <h3 style="color:#2d5a2d;margin-bottom:8px">✅ Already Processed</h3>
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0">
+          <span>👷 Worker Production</span><span style="color:#4CAF50;font-weight:bold">Completed ✓</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0">
+          <span>💰 Wages Paid (${nWorkers} worker${nWorkers !== 1 ? "s" : ""})</span>
+          <span style="color:#FF5252;font-weight:bold">−${game.workerWages} Gold</span>
+        </div>
+      </div>
+      <div style="background:#FFF8DC;border:2px solid #FF9800;border-radius:8px;padding:14px;margin:14px 0">
+        <h3 style="color:#b34700;margin-bottom:8px">⏳ Pending Payment</h3>
+        <div style="display:flex;justify-content:space-between;font-size:14px;padding:3px 0">
+          <span>🔧 Ship Maintenance Fee</span><span style="color:#FF9800;font-weight:bold">${cost} Gold</span>
+        </div>
+      </div>
+      <div style="background:#F0F8FF;border:2px solid #2E5AA7;border-radius:8px;padding:14px;margin:14px 0">
+        <h3 style="color:#1A3C8C;margin-bottom:8px">💹 Balance Summary</h3>
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span>Current Funds</span><span style="color:#4CAF50;font-weight:bold">${game.money} Gold</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span>After Maintenance</span><span style="font-weight:bold;color:${balanceAfter >= 0 ? "#2E5AA7" : "#FF5252"}">${balanceAfter} Gold</span></div>
+      </div>
+      <div class="separator"></div>
+      <div style="text-align:center">
+        <button class="btn btn-warning btn-xl" onclick="doMaintenance()">
+          ${canAfford ? `💸 Pay Maintenance: ${cost} Gold` : `⚠️ Force Pay (${game.money}/${cost} Gold)`}
+        </button>
+      </div>
+    </div>`;
+      }
+
+      function renderShipyard(p) {
+        const canUpgrade = game.shipLevel < 3;
+        const upgCost = canUpgrade
+          ? game.shipUpgradeCost[game.shipLevel] + game.shipUpgradePenalty
+          : 0;
+        const affordable = game.money >= upgCost;
+        const canDraft = game.shipLevel > 0;
+        const slotsFull =
+          game.equippedModules.length >= game.shipLevel && game.shipLevel > 0;
+        p.innerHTML = `
+    <div class="center-block">
+      <div class="hero-title">🚢 Shipyard & Module Rigging</div>
+      <div class="separator"></div>
+      <div style="background:#E6F2FF; border:3px solid #2E5AA7; border-radius:8px; padding:20px; margin:20px 0">
+        <div style="font-size:16px; font-weight:bold; color:#1A3C8C">🚢 Ship Level: ${game.shipLevel} | ⚓ Discount: ${game.shipLevel * 5} Gold</div>
+        <div style="font-size:14px; color:#2E5AA7; margin-top:6px">🔌 Module Slots: ${game.equippedModules.length} / ${game.shipLevel}</div>
+        ${
+          game.equippedModules.length
+            ? `
+          <div style="margin-top:12px">
+            ${game.equippedModules.map((m) => `<div style="font-size:12px; padding:3px 0">${m.icon} <strong>${m.name}</strong>: ${m.desc}</div>`).join("")}
+          </div>
+        `
+            : `<div style="font-size:12px; color:#666; margin-top:8px">No modules installed. Upgrade ship to unlock slots!</div>`
+        }
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px">
+        ${
+          canUpgrade
+            ? `
+          <button class="btn ${affordable ? "" : "btn-grey"} btn-lg" ${!affordable ? "disabled" : ""} onclick="upgradeShip()">
+            ⚓ Upgrade Ship (Lvl ${game.shipLevel + 1}) — Cost: ${upgCost} Gold | +1 Slot, +5 Discount
+          </button>`
+            : ""
+        }
+        <button class="btn ${canDraft ? "btn-gold" : "btn-grey"} btn-lg" ${!canDraft ? "disabled" : ""} onclick="startModuleDrafting()">
+          ${slotsFull ? "🔄 Draft & Swap Module (Slots Full)" : "🔧 Draft & Install Module"}
+        </button>
+        <button class="btn btn-success btn-lg" onclick="skipUpgrade()">⏭️ Continue Voyage</button>
+      </div>
+    </div>`;
+      }
+
+      function startModuleDrafting() {
+        const available = MODULES.filter(
+          (m) => !game.equippedModules.some((eq) => eq.id === m.id),
+        );
+        const pool = available.length >= 3 ? available : MODULES;
+        const picks = [];
+        const copy = [...pool];
+        for (let i = 0; i < 3; i++) {
+          if (!copy.length) break;
+          const idx = Math.floor(Math.random() * copy.length);
+          picks.push(copy.splice(idx, 1)[0]);
+        }
+        game._draftChoices = picks;
+        game.phase = "module_draft";
+        render();
+      }
+      function renderModuleDraft(p) {
+        p.innerHTML = `
+    <div class="center-block">
+      <div class="hero-title">🔧 Module Drafting</div>
+      <div class="subtitle-text">Choose a module to install or swap.</div>
+      <div class="card-grid">
+        ${game._draftChoices
+          .map(
+            (m, i) => `
+          <div class="module-card">
+            <div class="module-icon">${m.icon}</div>
+            <div class="module-name">${m.name}</div>
+            <div class="module-desc">${m.desc}</div>
+            <button class="btn btn-gold btn-lg" onclick="handleModuleSelect(${i})">
+              ${game.equippedModules.length < game.shipLevel ? "✅ Install" : "🔄 Swap"}
+            </button>
+          </div>
+        `,
+          )
+          .join("")}
+      </div>
+      <div style="text-align:center; margin-top:20px">
+        <button class="btn btn-grey" onclick="game.phase=4; render()">⬅️ Back to Shipyard</button>
+      </div>
+    </div>`;
+      }
+      function handleModuleSelect(idx) {
+        const mod = game._draftChoices[idx];
+        if (game.equippedModules.length < game.shipLevel) {
+          equipModule(mod);
+          game.phase = 4;
+          render();
+        } else {
+          game._newModule = mod;
+          game.phase = "module_swap";
+          render();
+        }
+      }
+      function renderModuleSwap(p) {
+        p.innerHTML = `
+    <div class="center-block">
+      <div class="hero-title" style="color:#FF5252">🔄 Select Module to Replace</div>
+      <div class="subtitle-text">New: ${game._newModule.icon} ${game._newModule.name} - ${game._newModule.desc}</div>
+      <div style="background:#F0F8FF; border:2px solid #2E5AA7; border-radius:8px; padding:16px; margin:20px 0">
+        ${game.equippedModules
+          .map(
+            (m, i) => `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:white; border-radius:4px; margin:6px 0">
+            <div>
+              <strong>${m.icon} ${m.name}</strong>
+              <div style="font-size:11px; color:#666">${m.desc}</div>
+            </div>
+            <button class="btn btn-danger" onclick="equipModule(game._newModule, ${i}); game.phase=4; render()">🗑️ Replace</button>
+          </div>
+        `,
+          )
+          .join("")}
+      </div>
+      <div style="text-align:center">
+        <button class="btn btn-grey" onclick="game.phase='module_draft'; render()">⬅️ Back to Draft</button>
+      </div>
+    </div>`;
+      }
+      function renderBankruptcy(p) {
+        p.innerHTML = `
+    <div class="center-block" style="text-align:center">
+      <div style="font-size:80px">💥</div>
+      <div class="hero-title" style="color:#FF5252">Ship Fleet Bankrupt!</div>
+      <div class="subtitle-text">${game.money <= 0 ? "Funds depleted, unable to pay essential operational costs" : "Insufficient funds to cover maintenance and wages"}</div>
+      <div class="separator"></div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; max-width:400px; margin:20px auto; text-align:left">
+        <div>🌊 Rounds Completed:</div><div><strong>${game.currentRound - 1}/${game.maxRounds}</strong></div>
+        <div>💰 Final Funds:</div><div><strong>${game.money} Gold</strong></div>
+        <div>🏆 Final Reputation:</div><div><strong>${game.score}</strong></div>
+        <div>🚢 Ship Level:</div><div><strong>${game.shipLevel}</strong></div>
+        <div>🧾 Taxes Paid:</div><div><strong>${game.vatPaid + game.incomeTaxPaid} Gold</strong></div>
+      </div>
+      <div class="separator"></div>
+      <div style="display:flex;justify-content:center;gap:12px;margin-top:4px">
+        <button class="btn btn-lg" onclick="restartGame()">🔄 Restart</button>
+        <button class="btn btn-warning btn-lg" onclick="showTips()">💡 Strategy Tips</button>
+      </div>
+    </div>`;
+      }
+      function renderEndgame(p) {
+        let rating;
+        if (game.score >= 300) rating = "👑 King of Silk Road";
+        else if (game.score >= 200) rating = "🏆 Maritime Tycoon";
+        else if (game.score >= 100) rating = "⭐ Successful Merchant";
+        else if (game.score >= 50) rating = "👍 Qualified Trader";
+        else rating = "🌊 Novice Merchant";
+        p.innerHTML = `
+    <div class="center-block" style="text-align:center">
+      <div class="hero-title">🎮 Game Over!</div>
+      <div style="font-size:22px; font-weight:bold; color:#2E5AA7; margin:20px 0">🏆 Final Reputation: ${game.score}</div>
+      <div style="font-size:20px; color:#4CAF50; margin:10px 0">💰 Final Funds: ${game.money} Gold</div>
+      <div style="font-size:20px; color:#FFD700; margin:20px 0">📈 Merchant Rank: ${rating}</div>
+      <div class="separator"></div>
+      <button class="btn btn-xl" onclick="restartGame()">🔄 Restart</button>
+    </div>`;
+      }
+
+      function renderControls() {
+        const c = document.getElementById("control-panel");
+        let startText, startDisabled, startAction, nextText, nextDisabled;
+        if (game.gameOver) {
+          startText = "⚠️ Game Over";
+          startDisabled = true;
+          startAction = "";
+          nextText = "⏭️ Continue";
+          nextDisabled = true;
+        } else if (game.phase === 0) {
+          startText = "🚢 Set Sail";
+          startDisabled = false;
+          startAction = "startBoonDrafting()";
+          nextText = "⏭️ Continue";
+          nextDisabled = true;
+        } else if (game.phase === 5) {
+          startText = "🧭 Drafting Boon...";
+          startDisabled = true;
+          startAction = "";
+          nextText = "⏭️ Continue";
+          nextDisabled = true;
+        } else if ([1, 2, 3, 4, "worker_mgmt"].includes(game.phase)) {
+          startText = "🚢 On Voyage...";
+          startDisabled = true;
+          startAction = "";
+          nextText = "⏭️ Next Phase";
+          nextDisabled = false;
+        } else {
+          startText = "🚢 On Voyage...";
+          startDisabled = true;
+          startAction = "";
+          nextText = "⏭️ Continue";
+          nextDisabled = true;
+        }
+        c.innerHTML = `
+    <button class="btn" ${startDisabled ? "disabled" : ""} onclick="${startAction}">${startText}</button>
+    <button class="btn" ${nextDisabled ? "disabled" : ""} onclick="nextPhase()">${nextText}</button>
+    <button class="btn" onclick="showInstructions()">📖 Guide</button>
+    <button class="btn btn-success" onclick="saveGame()">💾 Save</button>
+    <button class="btn" onclick="restartGame()">🔄 Restart</button>`;
+      }
+
+      function renderLog() {
+        const l = document.getElementById("log-panel");
+        l.innerHTML = logs
+          .slice(-100)
+          .map((m) => `<div class="log-entry">${escapeHtml(m)}</div>`)
+          .join("");
+        l.scrollTop = l.scrollHeight;
+      }
+
+      function showModal(html) {
+        const root = document.getElementById("modal-root");
+        root.innerHTML = `<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">${html}</div></div>`;
+      }
+      function closeModal() {
+        document.getElementById("modal-root").innerHTML = "";
+      }
+
+      function showInstructions() {
+        showModal(`
+    <h2>⚓ Navigation Guide</h2>
+    <pre>⚓ PortMasters - Rules
+
+🚢 Objective:
+Travel 8 voyages, accumulate wealth and reputation!
+
+📦 Goods System:
+Raw Materials: Hemp(3-6💰), Silk(6-10💰), Tea(10-14💰)
+Finished Goods: Linen Clothes(30-42💰), Cotton Clothes(50-65💰),
+Brocade(70-90💰), Sachet(95-120💰)
+
+👥 Worker System:
+• Weaver (8 Gold/Round): Makes Linen or Cotton Clothes
+• Master (12 Gold/Round): Makes Linen, Cotton or Brocade
+• Sachet Maker (20 Gold/Round): Makes Sachets
+
+🧾 Tax System:
+• VAT: 5% on finished product profit margin
+• Income Tax: 10% on voyage net profit
+
+🔮 Broker's Whisper:
+• Phase 1: Click "Broker's Rumor Board" to open the window
+• Spend 5 Gold to buy a "rumor" about Phase 2 demand
+• Revealed intel guarantees matching orders will appear
+
+🔧 Ship Modules (NEW!):
+• Phase 4: Upgrade your ship to unlock Module Slots
+• Draft powerful modules to create unique synergies
+• Swap modules to adapt to your current run!
+
+🌊 Voyage Phases:
+1. Port Purchase - Buy resources at ports (+ Broker rumors)
+2. Trade Transaction - Complete orders
+3. Maintenance - Pay upkeep fees & process production
+4. Upgrade - Improve ships and install modules
+
+⌨️ Shortcuts:
+• Ctrl+S: Save Game
+• Ctrl+N: Next Phase
+• Ctrl+H: Manage Workers
+• Ctrl+R: Restart
+• F1: Instructions
+
+⚓ Bon Voyage and Good Luck!</pre>
+    <div style="text-align:center; margin-top:16px"><button class="btn" onclick="closeModal()">Close</button></div>`);
+      }
+
+      function showRumorBoard() {
+        const html = `
+    <h2>🗣️ Broker's Rumor Board</h2>
+    <div style="text-align:center; color:#2E5AA7; margin-bottom:10px">Spend gold to reveal Phase 2 demand rumors!</div>
+    <div style="text-align:center; margin:12px 0">
+      <button class="btn btn-gold" onclick="purchaseIntel(); showRumorBoard()">🔮 Buy Rumor (${game.intelCost}💰)</button>
+    </div>
+    <div style="background:#F0F8FF; border:2px solid #2E5AA7; border-radius:6px; padding:12px; min-height:100px">
+      ${
+        game.revealedIntel.length
+          ? `
+        <div style="font-weight:bold; color:#2E5AA7; margin-bottom:8px">📜 Revealed Intel:</div>
+        ${game.revealedIntel.map((i) => `<div style="padding:4px 0; font-size:13px">• 🗣️ '${i.port} wants ${i.item}'</div>`).join("")}
+      `
+          : `<div style="color:#888; text-align:center; padding:20px">✨ No rumors revealed yet... Spend gold to listen to the Broker's whispers.</div>`
+      }
+    </div>
+    <div style="text-align:center; margin-top:16px"><button class="btn btn-grey" onclick="closeModal()">Close Board</button></div>`;
+        showModal(html);
+      }
+
+      function showTips() {
+        showModal(`
+    <h2>💡 Trade Strategy Advice</h2>
+    <pre>⚓ Avoiding Bankruptcy Strategies:
+
+💰 Financial Management:
+1. Always maintain reserve funds for expenses
+2. Maintenance + Wages are fixed rounds costs
+3. Calculate total expenditure before buying
+
+👥 Worker Management:
+1. Weaver Wage: ${WAGES.weaver} Gold / Round
+2. Master Wage: ${WAGES.master} Gold / Round
+3. Maker Wage: ${WAGES.sachet_maker} Gold / Round
+4. Hire only as needed
+
+🔮 Broker's Whisper Strategy:
+1. Buy rumors early if you have spare gold
+2. Hoard revealed items to guarantee Phase 2 profits
+3. Balance intel purchases with other investments
+
+🛒 Buying Strategy:
+1. Reserve funds for maintenance+wages first
+2. Select high value-for-money goods
+3. Prioritize port specialties + revealed intel
+
+🤝 Trading Strategy:
+1. Prioritize highest profit orders
+2. Consider freight impact on margins
+3. Finished orders yield high profit but incur VAT
+
+⚠️ Risk Control:
+1. Calculate fixed round costs: Maintenance + Wages
+2. Keep funds consistently > fixed costs
+3. Avoid over-expansion cash flow issues
+
+💾 Save game progress frequently with Ctrl+S!</pre>
+    <div style="text-align:center; margin-top:16px"><button class="btn" onclick="closeModal()">Close</button></div>`);
+      }
+
+      // EXACT ORIGINAL TUTORIAL RESTORED
+      const TUTORIAL_STEPS = [
+        {
+          title: "⚓ Welcome aboard",
+          content: `<p>PortMasters puts you on the ancient Silk Road. Eight voyages, limited gold, and a lot of merchants trying to outmaneuver you at every port.</p>
+<p>The rules are easy to pick up, but money is tight early on and a string of bad calls compounds quickly. This covers the four things that catch new players out most.</p>
+<p style="color:#777;font-size:13px">Two minutes to read. Saves a lot of frustrated restarts.</p>`,
+        },
+        {
+          title: "🏆 What you're playing for",
+          content: `<p>After eight voyages, the player with the highest score wins the title of <strong>Sea Master</strong>. Score comes from trade profits and fulfilled orders.</p>
+<p>One rule overrides everything else: <strong>do not go bankrupt</strong>. Hit zero gold and the game ends immediately. There is no coming back from it.</p>
+<p>Starting gold is <strong>100</strong>. That is enough to get going, but not enough to be careless with.</p>`,
+        },
+        {
+          title: "🔄 How a voyage works",
+          content: `<p>Each of the eight voyages runs through four phases in order:</p>
+<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0">
+  <div style="background:#E8F5E9;border-radius:6px;padding:10px;border-left:3px solid #4CAF50"><strong>1️⃣ Buy</strong><br><span style="font-size:12px;color:#444">Stock up at port markets</span></div>
+  <div style="background:#E3F2FD;border-radius:6px;padding:10px;border-left:3px solid #2196F3"><strong>2️⃣ Trade</strong><br><span style="font-size:12px;color:#444">Sell to waiting buyers</span></div>
+  <div style="background:#FFF3CD;border-radius:6px;padding:10px;border-left:3px solid #FFC107"><strong>3️⃣ Settle</strong><br><span style="font-size:12px;color:#444">Production lands, bills come due</span></div>
+  <div style="background:#FCE4EC;border-radius:6px;padding:10px;border-left:3px solid #E91E63"><strong>4️⃣ Upgrade</strong><br><span style="font-size:12px;color:#444">Improve your ship</span></div>
+</div>
+<p style="font-size:12px;color:#666;margin:4px 0 0"><kbd style="background:#eee;border:1px solid #ccc;padding:1px 6px;border-radius:3px">Ctrl+N</kbd> moves you between phases without clicking.</p>`,
+        },
+        {
+          title: "🏪 Phase 1: Buying",
+          content: `<p>The port market has Hemp, Silk, and Tea at prices that shift every voyage. Buy now, sell in Phase 2. That is the core loop.</p>
+<p>One thing worth knowing about: the <strong>Broker</strong>. Pay a small fee for a demand rumor and a specific trade order is <em>guaranteed</em> to appear when Phase 2 opens. Useful when you have stocked a particular good and want to make sure a buyer shows up.</p>
+<div style="background:#FFF8DC;border:1px solid #FFA000;border-radius:6px;padding:9px;font-size:13px;margin-top:10px;line-height:1.5">
+  💡 For the first two or three voyages, stick to raw materials. They sell the same voyage you buy them. No waiting and no risk.
+</div>`,
+        },
+        {
+          title: "📋 Phase 2: Filling orders",
+          content: `<p>Trade orders appear and you match your cargo to them. Each one shows the goods needed, the reward, and the shipping fee. Your take is whatever is left after fees and tax.</p>
+<p>You can fill as many orders as your cargo allows in a single phase.</p>
+<div style="background:#E3F2FD;border:1px solid #2196F3;border-radius:6px;padding:9px;font-size:13px;margin-top:10px;line-height:1.5">
+  📌 <strong>Finished goods</strong> (Fabric, Silk Garment, Sachet) pay two to three times more than raw materials. The catch is they need artisans, and artisans take a full voyage to deliver. That is covered next.
+</div>`,
+        },
+        {
+          title: "⚠️ The artisan trap",
+          content: `<p>Artisans turn raw materials into high-value finished goods and collect wages at each Phase 3. That part is simple. What catches most new players is this:</p>
+<div style="background:#C62828;color:#fff;border-radius:6px;padding:12px;margin:12px 0;text-align:center;font-size:14px;font-weight:bold;line-height:1.7">
+  Assign a task this voyage.<br>The goods are ready next voyage, not this one.
+</div>
+<p style="font-size:13px;color:#333;line-height:1.6">Weavers (8g), Master Weavers (12g), and Sachet Makers (20g) all charge wages <strong>every voyage</strong>, even when idle. Only hire once you have enough gold to cover at least two rounds of wages alongside your other bills.</p>`,
+        },
+        {
+          title: "💸 Phase 3: Settlement",
+          content: `<p>Before your next port, two bills arrive at Phase 3:</p>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0">
+  <div style="background:#E3F2FD;border-radius:6px;padding:10px;text-align:center">
+    <div style="font-size:22px;margin-bottom:4px">🔧</div>
+    <strong>Ship Maintenance</strong><br>
+    <span style="font-size:12px;color:#444">15 Gold, every voyage, fixed</span>
+  </div>
+  <div style="background:#FCE4EC;border-radius:6px;padding:10px;text-align:center">
+    <div style="font-size:22px;margin-bottom:4px">👥</div>
+    <strong>Artisan Wages</strong><br>
+    <span style="font-size:12px;color:#444">8 to 20 Gold per person per voyage</span>
+  </div>
+</div>
+<p style="font-size:13px;color:#333">The <strong>Round-End Obligations</strong> panel in the sidebar shows exactly what is owed. Check it before spending anything. Running dry here ends the run on the spot.</p>`,
+        },
+        {
+          title: "🚢 You are ready",
+          content: `<p>Keep these four points in mind as you play:</p>
+<ul style="padding-left:18px;line-height:2.1;font-size:14px">
+  <li>Start with raw material orders. Fast money, no complications.</li>
+  <li>Always keep at least <strong>30 Gold above</strong> what Phase 3 will cost you.</li>
+  <li>Hire artisans only when you can cover <strong>two full voyages of wages</strong>.</li>
+  <li>Phase 4 ship upgrades compound quickly. Do not skip them.</li>
+  <li><kbd style="background:#eee;border:1px solid #ccc;padding:1px 6px;border-radius:3px">Ctrl+S</kbd> saves your run &nbsp;·&nbsp; <kbd style="background:#eee;border:1px solid #ccc;padding:1px 6px;border-radius:3px">F1</kbd> opens the full guide.</li>
+</ul>
+<div style="background:#E8F5E9;border:2px solid #4CAF50;border-radius:8px;padding:12px;text-align:center;margin-top:14px">
+  <strong style="font-size:15px">Good winds and good margins, Captain. ⚓</strong>
+</div>`,
+        },
+      ];
+
+      let _tutStep = 0;
+
+      // EXACT ORIGINAL TUTORIAL MODAL RESTORED
+      function showTutorial(step) {
+        _tutStep = step === undefined ? 0 : step;
+        const total = TUTORIAL_STEPS.length;
+        const s = TUTORIAL_STEPS[_tutStep];
+        const pct = Math.round(((_tutStep + 1) / total) * 100);
+        const isLast = _tutStep === total - 1;
+        showModal(`
+    <div style="max-width:500px;margin:0 auto;font-family:inherit">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+        <h2 style="margin:0;color:#1A3C8C;font-size:18px;line-height:1.3;flex:1">${s.title}</h2>
+        <button onclick="closeTutorial()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#ccc;padding:0 0 0 12px;line-height:1;flex-shrink:0" title="Close">✕</button>
+      </div>
+      <div style="background:#ebebeb;border-radius:3px;height:4px;margin-bottom:18px">
+        <div style="background:#2E5AA7;height:4px;border-radius:3px;width:${pct}%;transition:width 0.35s ease"></div>
+      </div>
+      <div style="font-size:14px;line-height:1.7;color:#333;min-height:155px">${s.content}</div>
+      <div style="margin-top:18px;padding-top:14px;border-top:1px solid #eee">
+        <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px">
+          <div>
+            <button class="btn" onclick="${_tutStep > 0 ? `showTutorial(${_tutStep - 1})` : ""}"
+              ${_tutStep === 0 ? "disabled" : ""}
+              style="${_tutStep === 0 ? "opacity:0.2;cursor:default;" : ""}padding:8px 16px">Back</button>
+          </div>
+          <span style="font-size:12px;color:#aaa;white-space:nowrap;text-align:center">${_tutStep + 1} of ${total}</span>
+          <div style="text-align:right">
+            ${
+              isLast
+                ? `<button class="btn btn-success" onclick="closeTutorial()" style="padding:8px 22px;font-weight:bold">🚢 Set Sail!</button>`
+                : `<button class="btn btn-success" onclick="showTutorial(${_tutStep + 1})" style="padding:8px 22px">Continue</button>`
+            }
+          </div>
+        </div>
+        <div style="text-align:center;margin-top:11px">
+          <span onclick="closeTutorial()" style="font-size:12px;color:#bbb;cursor:pointer;text-decoration:underline;text-underline-offset:3px">Skip tutorial</span>
+        </div>
+      </div>
+    </div>`);
+      }
+
+      function closeTutorial() {
+        closeModal();
+      }
+
+      document.addEventListener("keydown", (e) => {
+        if (e.ctrlKey && e.key === "s") {
+          e.preventDefault();
+          saveGame();
+        } else if (e.ctrlKey && e.key === "n") {
+          e.preventDefault();
+          nextPhase();
+        } else if (e.ctrlKey && e.key === "r") {
+          e.preventDefault();
+          restartGame();
+        } else if (e.ctrlKey && e.key === "h") {
+          e.preventDefault();
+          if (game.phase === 1) completePhase1();
+        } else if (e.key === "F1") {
+          e.preventDefault();
+          showInstructions();
+        } else if (e.key === "Escape" && social.activeChat) {
+          closeChat();
+        }
+      });
+
+      setInterval(() => {
+        if (social.me && !game.gameOver) saveGameToServer();
+      }, 30000);
+
+      window.addEventListener("load", async () => {
+        try {
+          const res = await fetch("/api/me");
+          const d = await res.json();
+          if (d.ok && d.user) {
+            enterApp(d.user);
+            return;
+          }
+        } catch (e) {}
+      });
+    </script>
+  </body>
+</html>
